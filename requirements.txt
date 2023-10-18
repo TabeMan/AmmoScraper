@@ -1,0 +1,12 @@
+beautifulsoup4==4.12.2
+certifi==2023.7.22
+charset-normalizer==3.2.0
+greenlet==2.0.2
+idna==3.4
+playwright==1.38.0
+pyee==9.0.4
+python-decouple==3.8
+requests==2.31.0
+soupsieve==2.5
+typing_extensions==4.8.0
+urllib3==2.0.5
