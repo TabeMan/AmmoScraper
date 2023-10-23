@@ -4,6 +4,8 @@ from decouple import config
 from bot.base.get_scraper import get_scraper
 from bot.base.base_scraper import ScraperBot
 
+from bot.scrapers.sportsmansfinest_scraper import SportsmansfinestScraper
+
 
 CALIBERS = [
     "9mm Luger",
@@ -25,25 +27,25 @@ def run_scraper_for_caliber(caliber):
 
     :param caliber: The caliber for which to scrape ammo deals.
     """
-    # scraper = JgsalesScraper(
-    #     "https://www.jgsales.com/product-category/ammunition/ammo-for-rifles/?count=150&paged=&filter_caliber=223"
-    # )
-    # bot = ScraperBot(scrapers=[scraper])
+    scraper = SportsmansfinestScraper(
+        "https://sportsmansfinest.com/firearms/shooting/ammunition/handgun-ammunition/?_bc_fsnf=1&Caliber=380+ACP&in_stock=1"
+    )
+    bot = ScraperBot(scrapers=[scraper])
     # Converting the caliber name to the format used in the environment variable keys
-    config_caliber_name = caliber.upper().replace(" ", "_").replace(".", "")
-    url_key = f"MM_{config_caliber_name}_URLS"
+    # config_caliber_name = caliber.upper().replace(" ", "_").replace(".", "")
+    # url_key = f"MM_{config_caliber_name}_URLS"
 
-    # Parsing the URLs from the environment variable
-    urls_list = config(url_key, "").split(",")
-    urls_dict = dict(item.split(";") for item in urls_list)
+    # # Parsing the URLs from the environment variable
+    # urls_list = config(url_key, "").split(",")
+    # urls_dict = dict(item.split(";") for item in urls_list)
 
-    # Initializing the scraper objects
-    scrapers = []
-    for website, url in urls_dict.items():
-        scrapers.append(get_scraper(website, url))
+    # # Initializing the scraper objects
+    # scrapers = []
+    # for website, url in urls_dict.items():
+    #     scrapers.append(get_scraper(website, url))
 
-    # Initializing the ScraperBot with the scraper objects
-    bot = ScraperBot(scrapers=scrapers)
+    # # Initializing the ScraperBot with the scraper objects
+    # bot = ScraperBot(scrapers=scrapers)
     # Running the scrapers and printing the scraped data
     data = bot.run()
     pprint.pprint(data)

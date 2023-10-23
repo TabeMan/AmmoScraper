@@ -49,6 +49,19 @@ from bot.scrapers.buckinghorseoutpost_scraper import BuckinghorseoutpostScraper
 from bot.scrapers.caliberarmory_scraper import CaliberarmoryScraper
 from bot.scrapers.venturamunitions_scraper import VenturamunitionsScraper
 from bot.scrapers.jgsales_scraper import JgsalesScraper
+from bot.scrapers.greentop_scraper import GreentopScraper
+from bot.scrapers.natchez_scraper import NatchezScraper
+from bot.scrapers.alamoammo_scraper import AlamoammoScraper
+from bot.scrapers.grabagun_scraper import GrabagunScraper
+from bot.scrapers.opticsplanet_scraper import OpticsplanetScraper
+from bot.scrapers.rivertownmunitions_scrapr import RivertownmunitionsScraper
+from bot.scrapers.surplusammo_scraper import SurplusammoScraper
+from bot.scrapers.kirammo_scraper import KirammoScraper
+from bot.scrapers.midsouthshooters_scraper import MidsouthshootersScraper
+from bot.scrapers.sportsmanfulfillment_scraper import SportsmanfulfillmentScraper
+from bot.scrapers.gunrunusa_scraper import GunrunusaScraper
+from bot.scrapers.gordyandsons_scraper import GordyandsonsScraper
+from bot.scrapers.sportsmansfinest_scraper import SportsmansfinestScraper
 
 
 def get_scraper(website_name, url):

@@ -93,7 +93,7 @@ class LaxammoScraper(BaseScraper):
         original_price = float(original_price_text.strip("$"))
         result["original_price"] = f"{original_price:.2f}"
 
-        match = re.search(r"(\d+)\s*(ct|rounds|rd|round|rds)", result["title"].lower())
+        match = re.search(r"(\d+)\s*(ct|rd|round)", result["title"].lower())
         if match:
             rounds_per_case = int(match.group(1))
             cpr = original_price / rounds_per_case

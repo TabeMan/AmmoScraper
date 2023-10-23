@@ -4,20 +4,21 @@ import logging
 from bs4 import BeautifulSoup
 
 from bot.base.base_scraper import BaseScraper
+from bot.base.get_manufacturer import get_manufacturer
 
 logger = logging.getLogger(__name__)
 
 
-class Blackoutclub300Scraper(BaseScraper):
+class SportsmansfinestScraper(BaseScraper):
     """
-    A scraper for the 300 Black Out Club website.
+    A scraper for the Sportsman's Finest website.
 
     Inherits from BaseScraper.
     """
 
     def __init__(self, url):
         """
-        Initializes the Blackoutclub300Scraper with a URL.
+        Initializes the SportsmansfinestScraper with a URL.
 
         Args:
             url (str): The URL to be scraped.
@@ -32,7 +33,7 @@ class Blackoutclub300Scraper(BaseScraper):
         browser = self.browser
         page = browser.new_page()
         page.goto(self.url)
-        page.wait_for_selector("div.container")
+        page.wait_for_selector("main.main-content")
         soup = BeautifulSoup(page.content(), "html.parser")
         self.process_page(soup)
 
@@ -45,8 +46,8 @@ class Blackoutclub300Scraper(BaseScraper):
         """
         try:
             inner = soup.find(
-                "div", {"class": "product-items product-items-4"}
-            ).find_all("div", {"class": "product-item"})
+                "div", {"class": "product-grid grid-l-3 grid-m-2"}
+            ).find_all("article", {"class": "product-item product-item-grid"})
         except Exception as e:
             print(f"Unexpected error: {e} - {self.url} during process_page")
             traceback.print_exc()
@@ -80,28 +81,47 @@ class Blackoutclub300Scraper(BaseScraper):
             dict: A dictionary containing the extracted product info.
         """
         result = {}
-        result["title"] = row.find("div", {"class": "name"}).find("a").text.strip()
+        result["title"] = row.find("h3", {"class": "product-item-title"}).text.strip()
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
-        link = row.find("a").get("href")
-        result["link"] = f"https://www.300blackoutclub.com/{link}"
-        img = row.find("img", {"class": "img-responsive"}).get("src")
-        result["image"] = "".join(img).replace(" ", "%20")
-        result["website"] = "300 Black Out Club"
+        result["manufacturer"] = get_manufacturer(result["title"])
+        if result["manufacturer"] is None:
+            if "arms" in result["title"].lower():
+                result["manufacturer"] = "Armscor"
+            elif "brna" in result["title"].lower():
+                result["manufacturer"] = "Browning"
+            elif "win" in result["title"].lower():
+                result["manufacturer"] = "Winchester"
+            elif "fio" in result["title"].lower():
+                result["manufacturer"] = "Fiocchi"
+            elif "rem" in result["title"].lower():
+                result["manufacturer"] = "Remington"
+            elif "fed" in result["title"].lower():
+                result["manufacturer"] = "Federal"
+            elif "fsm" in result["title"].lower():
+                result["manufacturer"] = "Fort Scott"
+            elif "cia" in result["title"].lower():
+                result["manufacturer"] = "Red Army Standard"
+            elif "dtap" in result["title"].lower():
+                result["manufacturer"] = "Doubletap Ammunition"
+            elif "g2r" in result["title"].lower():
+                result["manufacturer"] = "G2 Research"
+        if not result["manufacturer"]:
+            return
+        result["image"] = row.find("img").get("src")
+        result["link"] = row.find("a").get("href")
+        result["website"] = "Sportsman's Finest"
 
-        if row.find("span", {"class": "sale-price"}):
-            original_price = float(
-                row.find("span", {"class": "sale-price"}).text.strip("$")
-            )
-        else:
-            original_price = float(
-                row.find("span", {"class": "regular-price"}).text.strip("$")
-            )
+        price_text = row.find("span", {"class": "price-value"}).text.strip().strip("$")
+        original_price = float(price_text)
         result["original_price"] = f"{original_price:.2f}"
 
-        match = re.search(r"(\d+)\s*(count|round|rd)", result["title"].lower())
+        match = re.search(r"(\d+[\d,]*)\s*(round|rd|/)", result["title"], re.IGNORECASE)
         if match:
-            rounds_per_case = int(match.group(1))
+            rounds_per_case_str = match.group(1).replace(",", "")
+            rounds_per_case = int(rounds_per_case_str)
+            if rounds_per_case == 0:
+                return
             cpr = original_price / rounds_per_case
             result["cpr"] = f"{cpr:.2f}"
             self.results.append(result)

@@ -1,22 +1,24 @@
-import logging
+import re
 import traceback
+import logging
 from bs4 import BeautifulSoup
 
 from bot.base.base_scraper import BaseScraper
+from bot.base.get_manufacturer import get_manufacturer
 
 logger = logging.getLogger(__name__)
 
 
-class AmmunitiondepotScraper(BaseScraper):
+class RivertownmunitionsScraper(BaseScraper):
     """
-    A scraper for the Ammunition Depot website.
+    A scraper for the River Town Munitions website.
 
     Inherits from BaseScraper.
     """
 
     def __init__(self, url):
         """
-        Initializes the AmmunitiondepotScraper with a URL.
+        Initializes the RivertownmunitionsScraper with a URL.
 
         Args:
             url (str): The URL to be scraped.
@@ -31,7 +33,7 @@ class AmmunitiondepotScraper(BaseScraper):
         browser = self.browser
         page = browser.new_page()
         page.goto(self.url, wait_until="networkidle")
-        page.wait_for_selector("div.ss-targeted")
+        page.wait_for_selector("div#content")
         soup = BeautifulSoup(page.content(), "html.parser")
         self.process_page(soup)
 
@@ -43,7 +45,12 @@ class AmmunitiondepotScraper(BaseScraper):
             soup (BeautifulSoup object): The parsed HTML of the page.
         """
         try:
-            inner = soup.find("div", {"class": "ss-targeted"}).find("ol").find_all("li")
+            inner = soup.find(
+                "ul", {"class": "products elementor-grid columns-3"}
+            ).find_all(
+                "li",
+                {"class": "ast-grid-common-col"},
+            )
         except Exception as e:
             print(f"Unexpected error: {e} - {self.url} during process_page")
             traceback.print_exc()
@@ -77,33 +84,39 @@ class AmmunitiondepotScraper(BaseScraper):
             dict: A dictionary containing the extracted product info.
         """
         result = {}
+        if row.find("span", {"class": "ast-shop-product-out-of-stock"}):
+            return
         result["title"] = row.find(
-            "a", {"class": "product-item-link ng-binding"}
+            "h2", {"class": "woocommerce-loop-product__title"}
         ).text.strip()
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
-        link = row.find("a", {"class": "product-item-link ng-binding"}).get("href")
-        result["link"] = f"https:{link}"
-        image = row.find("img", {"class": "product-image-photo"})["src"]
-        result["image"] = f"https:{image}"
-        result["website"] = "Ammunition Depot"
-        price_tag = row.find("span", {"class": "ng-binding ss-sale-price"})
-        if price_tag is None:
-            price_tag = row.find("span", {"class": "price ng-scope"}).find(
-                "span", {"class": "ng-binding"}
-            )
-
-        if price_tag is not None:
-            original_price = float(price_tag.text.strip("$"))
-        else:
-            print("Price not found")
+        result["manufacturer"] = get_manufacturer(result["title"])
+        if not result["manufacturer"]:
             return
+        result["link"] = row.find("a").get("href")
+        result["image"] = row.find(
+            "img",
+            {"class": "attachment-woocommerce_thumbnail"},
+        ).get("data-lazy-src")
+        result["website"] = "River Town Munitions"
 
+        price_text = row.find("span", {"class": "price"}).find_all("bdi")
+        if len(price_text) == 1:
+            original_price = float(price_text[0].text.strip("$"))
+        elif len(price_text) == 2:
+            original_price = float(price_text[1].text.strip("$"))
         result["original_price"] = f"{original_price:.2f}"
-        cpr = float(
-            row.find("span", {"class": "rounds-price ng-scope"})
-            .find("span", {"class": "ng-binding"})
-            .text.strip("$")
+
+        match = re.search(
+            r"(\d+)\s*((rd box\))|(rd case\))|(rd brick\))|round)",
+            result["title"],
+            re.IGNORECASE,
         )
-        result["cpr"] = f"{cpr:.2f}"
-        self.results.append(result)
+        if match:
+            rounds_per_case = int(match.group(1))
+            cpr = original_price / rounds_per_case
+            result["cpr"] = f"{cpr:.2f}"
+            self.results.append(result)
+        else:
+            return

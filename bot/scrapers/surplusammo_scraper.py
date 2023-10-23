@@ -4,20 +4,21 @@ import logging
 from bs4 import BeautifulSoup
 
 from bot.base.base_scraper import BaseScraper
+from bot.base.get_manufacturer import get_manufacturer
 
 logger = logging.getLogger(__name__)
 
 
-class MeadammoScraper(BaseScraper):
+class SurplusammoScraper(BaseScraper):
     """
-    A scraper for the Mead Ammo website.
+    A scraper for the Surplus Ammo website.
 
     Inherits from BaseScraper.
     """
 
     def __init__(self, url):
         """
-        Initializes the MeadammoScraper with a URL.
+        Initializes the SurplusammoScraper with a URL.
 
         Args:
             url (str): The URL to be scraped.
@@ -44,8 +45,9 @@ class MeadammoScraper(BaseScraper):
             soup (BeautifulSoup object): The parsed HTML of the page.
         """
         try:
-            inner = soup.find("ul", {"class": "products columns-3"}).find_all(
-                "li", {"class": "product"}
+            inner = soup.find("ul", {"class": "productGrid"}).find_all(
+                "li",
+                {"class": "product"},
             )
         except Exception as e:
             print(f"Unexpected error: {e} - {self.url} during process_page")
@@ -80,27 +82,43 @@ class MeadammoScraper(BaseScraper):
             dict: A dictionary containing the extracted product info.
         """
         result = {}
-        result["title"] = row.find("h2").text.strip()
-        if "223" in result["title"]:
-            return
-        result["steel_casing"] = "steel" in result["title"].lower()
-        result["remanufactured"] = "reman" in result["title"].lower()
-        result["link"] = row.find("a").get("href")
-        result["image"] = row.find("img").get("src")
-        result["website"] = "Mead Ammo"
+        if row.find("a", {"class": "button button--small card-figcaption-button"}):
+            if (
+                row.find(
+                    "a", {"class": "button button--small card-figcaption-button"}
+                ).text.strip()
+                == "Out of Stock"
+            ):
+                return
+            result["title"] = row.find("h4", {"class": "card-title"}).text.strip()
+            if ".223" in result["title"]:
+                return
+            result["steel_casing"] = "steel" in result["title"].lower()
+            result["remanufactured"] = "reman" in result["title"].lower()
+            result["manufacturer"] = get_manufacturer(result["title"])
+            if not result["manufacturer"]:
+                return
+            result["link"] = row.find("a").get("href")
+            result["image"] = row.find("img").get("data-src")
+            result["website"] = "Surplus Ammo"
 
-        price_text = row.find("span", {"class": "price"}).find_all("bdi")
-        if len(price_text) == 1:
-            original_price = float(price_text[0].text.strip("$"))
-        elif len(price_text) == 2:
-            original_price = float(price_text[1].text.strip("$"))
-        result["original_price"] = f"{original_price:.2f}"
+            if row.find("div", {"class": "price-section price-section--withoutTax"}):
+                original_price = float(
+                    row.find("span", {"class": "price price--withoutTax"}).text.strip(
+                        "$"
+                    )
+                )
+                result["original_price"] = f"{original_price:.2f}"
 
-        match = re.search(r"(\d+)\s*(rd|round)", result["title"].lower())
-        if match:
-            rounds_per_case = int(match.group(1))
-            cpr = original_price / rounds_per_case
-            result["cpr"] = f"{cpr:.2f}"
-            self.results.append(result)
+                match = re.search(r"(\d+)\s*(round|rd)", result["title"], re.IGNORECASE)
+                if match:
+                    rounds_per_case = int(match.group(1))
+                    cpr = original_price / rounds_per_case
+                    result["cpr"] = f"{cpr:.2f}"
+                    self.results.append(result)
+                else:
+                    return
+            else:
+                return
         else:
             return

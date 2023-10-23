@@ -100,7 +100,7 @@ class NytacticalScraper(BaseScraper):
             original_price = float(prices[1])
             result["original_price"] = f"{original_price:.2f}"
         match = re.search(
-            r"(\d+)\s*(rounds|rd|round|rds|pk|-pk|-pack)", result["title"].lower()
+            r"(\d+)\s*(rd|round|rds|pk|-pk|-pack)", result["title"].lower()
         )
         if match:
             rounds_per_case = int(match.group(1))

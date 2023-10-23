@@ -1,22 +1,24 @@
-import logging
+import re
 import traceback
+import logging
 from bs4 import BeautifulSoup
 
 from bot.base.base_scraper import BaseScraper
+from bot.base.get_manufacturer import get_manufacturer
 
 logger = logging.getLogger(__name__)
 
 
-class AmmunitiondepotScraper(BaseScraper):
+class AlamoammoScraper(BaseScraper):
     """
-    A scraper for the Ammunition Depot website.
+    A scraper for the Alamo Ammo website.
 
     Inherits from BaseScraper.
     """
 
     def __init__(self, url):
         """
-        Initializes the AmmunitiondepotScraper with a URL.
+        Initializes the AlamoammoScraper with a URL.
 
         Args:
             url (str): The URL to be scraped.
@@ -31,7 +33,7 @@ class AmmunitiondepotScraper(BaseScraper):
         browser = self.browser
         page = browser.new_page()
         page.goto(self.url, wait_until="networkidle")
-        page.wait_for_selector("div.ss-targeted")
+        page.wait_for_selector("div#mainWrapper")
         soup = BeautifulSoup(page.content(), "html.parser")
         self.process_page(soup)
 
@@ -43,13 +45,15 @@ class AmmunitiondepotScraper(BaseScraper):
             soup (BeautifulSoup object): The parsed HTML of the page.
         """
         try:
-            inner = soup.find("div", {"class": "ss-targeted"}).find("ol").find_all("li")
+            inner = (
+                soup.find("table", {"class": "tabTable"}).find("tbody").find_all("tr")
+            )
         except Exception as e:
             print(f"Unexpected error: {e} - {self.url} during process_page")
             traceback.print_exc()
             return
 
-        for row in inner:
+        for row in inner[1:]:
             self.process_row(row)
 
     def process_row(self, row):
@@ -77,33 +81,37 @@ class AmmunitiondepotScraper(BaseScraper):
             dict: A dictionary containing the extracted product info.
         """
         result = {}
-        result["title"] = row.find(
-            "a", {"class": "product-item-link ng-binding"}
-        ).text.strip()
+        # Remove product SKU from title
+        result["title"] = (
+            row.find("h3", {"class": "itemTitle"}).text.split("UPC")[0].strip()
+        )
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
-        link = row.find("a", {"class": "product-item-link ng-binding"}).get("href")
-        result["link"] = f"https:{link}"
-        image = row.find("img", {"class": "product-image-photo"})["src"]
-        result["image"] = f"https:{image}"
-        result["website"] = "Ammunition Depot"
-        price_tag = row.find("span", {"class": "ng-binding ss-sale-price"})
-        if price_tag is None:
-            price_tag = row.find("span", {"class": "price ng-scope"}).find(
-                "span", {"class": "ng-binding"}
-            )
-
-        if price_tag is not None:
-            original_price = float(price_tag.text.strip("$"))
-        else:
-            print("Price not found")
-            return
-
-        result["original_price"] = f"{original_price:.2f}"
-        cpr = float(
-            row.find("span", {"class": "rounds-price ng-scope"})
-            .find("span", {"class": "ng-binding"})
-            .text.strip("$")
+        result["manufacturer"] = get_manufacturer(result["title"])
+        result["link"] = row.find("a").get("href")
+        image = row.find("img").get("src")
+        result["image"] = f"https://alamoammo.com/{image}"
+        result["website"] = "Alamo Ammo"
+        # Find all td elements in the row
+        all_tds = row.find_all("td")
+        original_price = float(
+            all_tds[3].text.strip().split(" ")[1].strip("$").replace("...", "")
         )
-        result["cpr"] = f"{cpr:.2f}"
-        self.results.append(result)
+        result["original_price"] = f"{original_price:.2f}"
+        match = re.search(r"(\d+)\s*(rounds M|rnds M)", result["title"], re.IGNORECASE)
+        # Checks if title has a second "round" in it (e.g. 100 rounds 9mm FMJ 100rnds)
+        another_match = re.search(
+            r"(\d+)\s*(rnd|round)", result["title"], re.IGNORECASE
+        )
+        if match:
+            rounds_per_case = int(match.group(1))
+            cpr = original_price / rounds_per_case
+            result["cpr"] = f"{cpr:.2f}"
+            self.results.append(result)
+        elif another_match:
+            rounds_per_case = int(another_match.group(1))
+            cpr = original_price / rounds_per_case
+            result["cpr"] = f"{cpr:.2f}"
+            self.results.append(result)
+        else:
+            return
