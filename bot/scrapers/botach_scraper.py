@@ -1,3 +1,4 @@
+import re
 import traceback
 import logging
 from bs4 import BeautifulSoup
@@ -8,16 +9,16 @@ from bot.base.get_manufacturer import get_manufacturer
 logger = logging.getLogger(__name__)
 
 
-class BassproScraper(BaseScraper):
+class BotachScraper(BaseScraper):
     """
-    A scraper for the Bass Pro website.
+    A scraper for the Botach website.
 
     Inherits from BaseScraper.
     """
 
     def __init__(self, url):
         """
-        Initializes the BassproScraper with a URL.
+        Initializes the BotachScraper with a URL.
 
         Args:
             url (str): The URL to be scraped.
@@ -31,8 +32,27 @@ class BassproScraper(BaseScraper):
         """
         browser = self.browser
         page = browser.new_page()
-        page.goto(self.url)
-        page.wait_for_selector("img", state="attached")
+        page.goto(self.url, wait_until="networkidle")
+
+        # Define the scrolling function
+        def scroll_page():
+            return page.eval_on_selector(
+                "body",
+                """body => {
+                window.scrollBy(0, window.innerHeight);
+                return window.scrollY;
+            }""",
+            )
+
+        # Scroll incrementally, waiting for a bit between each scroll.
+        last_position = 0
+        while True:
+            new_position = scroll_page()
+            if new_position == last_position:
+                # Stop scrolling when we reach the bottom of the page
+                break
+            last_position = new_position
+            page.wait_for_timeout(800)
         soup = BeautifulSoup(page.content(), "html.parser")
         self.process_page(soup)
 
@@ -44,10 +64,7 @@ class BassproScraper(BaseScraper):
             soup (BeautifulSoup object): The parsed HTML of the page.
         """
         try:
-            inner = soup.find("div", {"class": "styles_ResultsList__FA8dO"}).find_all(
-                "div",
-                {"class": "styles_ResultItem__DHSnb"},
-            )
+            inner = soup.find("div", {"class": "kuGridView"}).find("ul").find_all("li")
         except Exception as e:
             print(f"Unexpected error: {e} - {self.url} during process_page")
             traceback.print_exc()
@@ -81,61 +98,31 @@ class BassproScraper(BaseScraper):
             dict: A dictionary containing the extracted product info.
         """
         result = {}
-        result["title"] = row.find("a").get("title")
+        result["title"] = row.find("div", {"class": "kuName"}).text.strip()
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
         result["manufacturer"] = get_manufacturer(result["title"])
         if not result["manufacturer"]:
             return
-        link = row.find("a").get("href")
-        result["link"] = f"https://www.basspro.com{link}"
-        result["image"] = (
-            row.find("div", {"class": "styles_ResultItemThumbnail__QKxlc undefined"})
-            .find("img")
-            .get("src")
-        )
-        if not result["image"]:
-            return
-        result["website"] = "Bass Pro"
+        result["link"] = row.find("a").get("href")
+        result["image"] = row.find("img").get("src")
+        result["website"] = "Botach"
 
-        original_price_text = row.find(
-            "div", {"class": "styles_PriceContainer__TySzg"}
-        ).find_all("span")
-        if len(original_price_text) == 1:
+        if row.find("div", {"class": "kuSalePrice kuSpecialPrice"}):
             original_price = float(
-                row.find("div", {"class": "styles_PriceContainer__TySzg"})
-                .find("span", {"class": "styles_ProductPrice__KUcFU"})
-                .text.strip("$")
-            )
-        elif len(original_price_text) == 3:
-            if original_price_text[1].text.strip() == "-":
-                return
-            original_price = float(
-                row.find("div", {"class": "styles_PriceContainer__TySzg"})
-                .find("span", {"class": "styles_ProductPrice__Z1hB9"})
-                .text.strip("$")
+                row.find("div", {"class": "kuSalePrice kuSpecialPrice"}).text.strip("$")
             )
         else:
-            return
+            original_price = float(
+                row.find("div", {"class": "kuSalePrice"}).text.strip("$")
+            )
         result["original_price"] = f"{original_price:.2f}"
 
-        if row.find("div", {"class": "styles_PricePerRoundContainer__GNmAp"}):
-            cpr = (
-                row.find("div", {"class": "styles_PricePerRoundContainer__GNmAp"})
-                .text.split("/")[0]
-                .strip()
-            )
-            if "\u00A2" in cpr:
-                cpr = int(cpr.strip("\u00A2"))
-                if cpr < 10:
-                    result["cpr"] = f"0.0{cpr}"
-                else:
-                    result["cpr"] = f"0.{cpr}"
-            elif "$" in cpr:
-                cpr = float(cpr.strip("$"))
-                result["cpr"] = f"{cpr:.2f}"
-            else:
-                return
+        match = re.search(r"(\d+)\s*(rd|-round)", result["title"], re.IGNORECASE)
+        if match:
+            rounds_per_case = int(match.group(1))
+            cpr = original_price / rounds_per_case
+            result["cpr"] = f"{cpr:.2f}"
             self.results.append(result)
         else:
             return
