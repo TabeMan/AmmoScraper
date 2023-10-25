@@ -70,6 +70,13 @@ from bot.scrapers.ammomart_scraper import AmmomartScraper
 from bot.scrapers.getloadedpa_scraper import GetloadedpaScraper
 from bot.scrapers.botach_scraper import BotachScraper
 from bot.scrapers.abguns_scraper import AbgunsScraper
+from bot.scrapers.ammo4patriots_scraper import Ammo4patriotsScraper
+from bot.scrapers.ammobros_scraper import AmmobrosScraper
+from bot.scrapers.ammocitysupply_scraper import AmmocitysupplyScraper
+from bot.scrapers.ammofast_scraper import AmmofastScraper
+from bot.scrapers.ammojoy_scraper import AmmojoyScraper
+from bot.scrapers.astrasports_scraper import AstrasportsScraper
+from bot.scrapers.ammunitionplanet_scraper import AmmunitionplanetScraper
 
 
 def get_scraper(website_name, url):

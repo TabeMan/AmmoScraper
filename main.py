@@ -4,7 +4,7 @@ from decouple import config
 from bot.base.get_scraper import get_scraper
 from bot.base.base_scraper import ScraperBot
 
-from bot.scrapers.abguns_scraper import AbgunsScraper
+from bot.scrapers.ammunitionplanet_scraper import AmmunitionplanetScraper
 
 
 CALIBERS = [
@@ -27,8 +27,8 @@ def run_scraper_for_caliber(caliber):
 
     :param caliber: The caliber for which to scrape ammo deals.
     """
-    scraper = AbgunsScraper(
-        "https://abguns.com/product-category/handgun-and-rifle-ammunition-for-sale/rimfire-ammo/?_filter_caliber=22lr&_in_stock=1"
+    scraper = AmmunitionplanetScraper(
+        "https://ammunitionplanet.com/product-category/pistol-ammunition/45-acp/?per_page=64&orderby=by_stock"
     )
     bot = ScraperBot(scrapers=[scraper])
     # Converting the caliber name to the format used in the environment variable keys
