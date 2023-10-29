@@ -9,16 +9,16 @@ from bot.base.get_manufacturer import get_manufacturer
 logger = logging.getLogger(__name__)
 
 
-class GetloadedpaScraper(BaseScraper):
+class BulldoggunsScraper(BaseScraper):
     """
-    A scraper for the Get Loaded PA website.
+    A scraper for the Bulldog Guns & Ammo website.
 
     Inherits from BaseScraper.
     """
 
     def __init__(self, url):
         """
-        Initializes the GetloadedpaScraper with a URL.
+        Initializes the BulldoggunsScraper with a URL.
 
         Args:
             url (str): The URL to be scraped.
@@ -45,7 +45,7 @@ class GetloadedpaScraper(BaseScraper):
                     .get("href")
                 )
                 if url:
-                    self.url = f"https://www.getloadedpa.com{url}"
+                    self.url = f"https://www.bulldogguns.us{url}"
                 else:
                     break
             else:
@@ -59,8 +59,13 @@ class GetloadedpaScraper(BaseScraper):
             soup (BeautifulSoup object): The parsed HTML of the page.
         """
         try:
-            inner = soup.find("div", {"class": "col-lg-10 col-md-9"}).find_all(
-                "div", {"class": "item no-js-link col-lg-3 col-md-4 col-sm-4 col-xs-12"}
+            inner = (
+                soup.find("div", {"class": "item-container"})
+                .find("div", {"class": "col-lg-10 col-md-9"})
+                .find_all(
+                    "div",
+                    {"class": "item no-js-link col-lg-3 col-md-4 col-sm-4 col-xs-12"},
+                )
             )
         except Exception as e:
             print(f"Unexpected error: {e} - {self.url} during process_page")
@@ -95,34 +100,40 @@ class GetloadedpaScraper(BaseScraper):
             dict: A dictionary containing the extracted product info.
         """
         result = {}
-        if row.find("div", {"class": "product-badge out-of-stock-badge"}):
-            return
         result["title"] = row.find("div", {"class": "description"}).text.strip()
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
-        manufacturer = row.find("span", {"class": "small"}).text.strip()
+        manufacturer = (
+            row.find("div", {"class": "description"})
+            .find("span", {"class": "small"})
+            .text.strip()
+        )
         result["manufacturer"] = get_manufacturer(manufacturer)
         if not result["manufacturer"]:
             return
         link = row.find("a").get("href")
-        result["link"] = f"https://www.getloadedpa.com{link}"
-        result["image"] = row.find("img", {"class": "img-responsive"}).get("src")
-        result["website"] = "Get Loaded PA"
+        result["link"] = f"https://www.bulldogguns.us{link}"
+        result["image"] = row.find("img").get("src")
+        result["website"] = "Bulldog Guns & Ammo"
 
-        price_text = row.find("div", {"class": "price"})
-        if price_text.find("span", {"class": "text-success"}):
+        if row.find("div", {"class": "price"}).find("span", {"class": "text-success"}):
             original_price = float(
-                price_text.find("span", {"class": "text-success"}).text.strip("$")
+                row.find("div", {"class": "price"})
+                .find("span", {"class": "text-success"})
+                .text.strip("$")
             )
         else:
-            original_price = float(price_text.text.strip("$"))
+            original_price = float(row.find("div", {"class": "price"}).text.strip("$"))
         result["original_price"] = f"{original_price:.2f}"
 
         match = re.search(
-            r"(\d+)\s*(round|rd|pack|pk|-pack)", result["title"], re.IGNORECASE
+            r"(\d+[\d,]*)\s*(round|pack|rd|pk|-pack)", result["title"], re.IGNORECASE
         )
         if match:
-            rounds_per_case = int(match.group(1))
+            rounds_per_case_str = match.group(1).replace(",", "")
+            rounds_per_case = int(rounds_per_case_str)
+            if rounds_per_case == 0:
+                return
             cpr = original_price / rounds_per_case
             result["cpr"] = f"{cpr:.2f}"
             self.results.append(result)

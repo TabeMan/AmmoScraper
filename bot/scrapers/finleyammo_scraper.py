@@ -4,6 +4,7 @@ import logging
 from bs4 import BeautifulSoup
 
 from bot.base.base_scraper import BaseScraper
+from bot.base.get_manufacturer import get_manufacturer
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +86,14 @@ class FinleyammoScraper(BaseScraper):
         result["title"] = row.find("div", {"class": "description"}).text.strip()
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
+        manufacturer = (
+            row.find("div", {"class": "grid-description"})
+            .find("span", {"class": "small"})
+            .text.strip()
+        )
+        result["manufacturer"] = get_manufacturer(manufacturer)
+        if not result["manufacturer"]:
+            return
         link = row.find("a").get("href")
         result["link"] = f"https://www.finleyammo.com{link}"
         result["image"] = row.find("img", {"class": "img-responsive"}).get("src")
@@ -94,7 +103,7 @@ class FinleyammoScraper(BaseScraper):
         original_price = float(price_text.strip("$"))
         result["original_price"] = f"{original_price:.2f}"
 
-        match = re.search(r"(\d+)\s*(rd|rds|rounds?)\b", result["title"].lower())
+        match = re.search(r"(\d+[\d,]*)\s*(rd|round)", result["title"], re.IGNORECASE)
         if match:
             rounds_per_case = int(match.group(1))
             cpr = original_price / rounds_per_case

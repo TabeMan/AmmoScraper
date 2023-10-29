@@ -4,6 +4,7 @@ import logging
 from bs4 import BeautifulSoup
 
 from bot.base.base_scraper import BaseScraper
+from bot.base.get_manufacturer import get_manufacturer
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +86,9 @@ class LohmanarmsScraper(BaseScraper):
         result["title"] = row.find("h3", {"class": "name"}).find("a").text.strip()
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
+        result["manufacturer"] = get_manufacturer(result["title"])
+        if not result["manufacturer"]:
+            return
         result["link"] = row.find("a", {"class": "product-image"}).get("href")
         result["image"] = row.find("img").get("src")
         result["website"] = "Lohman Arms"
@@ -96,9 +100,7 @@ class LohmanarmsScraper(BaseScraper):
         )
         result["original_price"] = f"{original_price:.2f}"
 
-        match = re.search(
-            r"(\d+)\s*(/bx|/box|rds/box|rds/bx|bx)", result["title"].lower()
-        )
+        match = re.search(r"(\d+)\s*(/|rd)", result["title"].lower())
         if match:
             rounds_per_case = int(match.group(1))
             cpr = float(original_price / rounds_per_case)

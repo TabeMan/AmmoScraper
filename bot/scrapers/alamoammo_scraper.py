@@ -32,10 +32,26 @@ class AlamoammoScraper(BaseScraper):
         """
         browser = self.browser
         page = browser.new_page()
-        page.goto(self.url, wait_until="networkidle")
-        page.wait_for_selector("div#mainWrapper")
-        soup = BeautifulSoup(page.content(), "html.parser")
-        self.process_page(soup)
+        # Click "Next" button until it's no longer visible
+        while True:
+            page.goto(self.url, wait_until="networkidle")
+            page.wait_for_selector("div#mainWrapper")
+            soup = BeautifulSoup(page.content(), "html.parser")
+            self.process_page(soup)
+            if soup.find("div", {"id": "productsListingListingBottomLinks"}).find(
+                "a", {"title": " Next Page "}
+            ):
+                url = (
+                    soup.find("div", {"id": "productsListingListingBottomLinks"})
+                    .find("a", {"title": " Next Page "})
+                    .get("href")
+                )
+                if url:
+                    self.url = url
+                else:
+                    break
+            else:
+                break
 
     def process_page(self, soup):
         """
@@ -88,6 +104,8 @@ class AlamoammoScraper(BaseScraper):
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
         result["manufacturer"] = get_manufacturer(result["title"])
+        if not result["manufacturer"]:
+            return
         result["link"] = row.find("a").get("href")
         image = row.find("img").get("src")
         result["image"] = f"https://alamoammo.com/{image}"

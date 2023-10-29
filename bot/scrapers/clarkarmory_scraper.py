@@ -9,16 +9,16 @@ from bot.base.get_manufacturer import get_manufacturer
 logger = logging.getLogger(__name__)
 
 
-class GetloadedpaScraper(BaseScraper):
+class ClarkarmoryScraper(BaseScraper):
     """
-    A scraper for the Get Loaded PA website.
+    A scraper for the Clark Armory website.
 
     Inherits from BaseScraper.
     """
 
     def __init__(self, url):
         """
-        Initializes the GetloadedpaScraper with a URL.
+        Initializes the ClarkarmoryScraper with a URL.
 
         Args:
             url (str): The URL to be scraped.
@@ -35,17 +35,20 @@ class GetloadedpaScraper(BaseScraper):
         # Click "Next" button until it's no longer visible
         while True:
             page.goto(self.url, wait_until="networkidle")
-            page.wait_for_selector("div#content-backdrop")
+            page.wait_for_selector("main#site-main")
             soup = BeautifulSoup(page.content(), "html.parser")
             self.process_page(soup)
-            if soup.find("ul", {"class": "pagination"}).find("a", {"rel": "next"}):
+            if soup.find("ul", {"class": "pagination--inner"}).find(
+                "li", {"class": "pagination--next"}
+            ):
                 url = (
-                    soup.find("ul", {"class": "pagination"})
-                    .find("a", {"rel": "next"})
+                    soup.find("ul", {"class": "pagination--inner"})
+                    .find("li", {"class": "pagination--next"})
+                    .find("a")
                     .get("href")
                 )
                 if url:
-                    self.url = f"https://www.getloadedpa.com{url}"
+                    self.url = f"https://clarkarmory.com{url}"
                 else:
                     break
             else:
@@ -59,9 +62,7 @@ class GetloadedpaScraper(BaseScraper):
             soup (BeautifulSoup object): The parsed HTML of the page.
         """
         try:
-            inner = soup.find("div", {"class": "col-lg-10 col-md-9"}).find_all(
-                "div", {"class": "item no-js-link col-lg-3 col-md-4 col-sm-4 col-xs-12"}
-            )
+            inner = soup.find("ul", {"class": "productgrid--items"}).find_all("li")
         except Exception as e:
             print(f"Unexpected error: {e} - {self.url} during process_page")
             traceback.print_exc()
@@ -95,34 +96,39 @@ class GetloadedpaScraper(BaseScraper):
             dict: A dictionary containing the extracted product info.
         """
         result = {}
-        if row.find("div", {"class": "product-badge out-of-stock-badge"}):
+        # Skip if sold out
+        if row.find(
+            "span", {"class": "productitem__badge productitem__badge--soldout"}
+        ):
             return
-        result["title"] = row.find("div", {"class": "description"}).text.strip()
+        result["title"] = row.find("h2", {"class": "productitem--title"}).text.strip()
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
-        manufacturer = row.find("span", {"class": "small"}).text.strip()
-        result["manufacturer"] = get_manufacturer(manufacturer)
+        result["manufacturer"] = get_manufacturer(result["title"])
         if not result["manufacturer"]:
             return
         link = row.find("a").get("href")
-        result["link"] = f"https://www.getloadedpa.com{link}"
-        result["image"] = row.find("img", {"class": "img-responsive"}).get("src")
-        result["website"] = "Get Loaded PA"
+        result["link"] = f"https://clarkarmory.com{link}"
+        image = row.find("img").get("src")
+        result["image"] = f"https:{image}"
+        result["website"] = "Clark Armory"
 
-        price_text = row.find("div", {"class": "price"})
-        if price_text.find("span", {"class": "text-success"}):
-            original_price = float(
-                price_text.find("span", {"class": "text-success"}).text.strip("$")
-            )
-        else:
-            original_price = float(price_text.text.strip("$"))
+        original_price = float(
+            row.find("div", {"class": "price__current"})
+            .find("span", {"class": "money"})
+            .text.strip()
+            .strip("$")
+        )
         result["original_price"] = f"{original_price:.2f}"
 
         match = re.search(
-            r"(\d+)\s*(round|rd|pack|pk|-pack)", result["title"], re.IGNORECASE
+            r"(\d+[\d,]*)\s*(round|rd|per)", result["title"], re.IGNORECASE
         )
         if match:
-            rounds_per_case = int(match.group(1))
+            rounds_per_case_str = match.group(1).replace(",", "")
+            rounds_per_case = int(rounds_per_case_str)
+            if rounds_per_case == 0:
+                return
             cpr = original_price / rounds_per_case
             result["cpr"] = f"{cpr:.2f}"
             self.results.append(result)

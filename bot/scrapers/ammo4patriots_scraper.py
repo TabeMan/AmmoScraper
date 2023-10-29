@@ -32,10 +32,27 @@ class Ammo4patriotsScraper(BaseScraper):
         """
         browser = self.browser
         page = browser.new_page()
-        page.goto(self.url, wait_until="networkidle")
-        page.wait_for_selector("div.body")
-        soup = BeautifulSoup(page.content(), "html.parser")
-        self.process_page(soup)
+        # Click "Next" button until it's no longer visible
+        while True:
+            page.goto(self.url, wait_until="networkidle")
+            page.wait_for_selector("div.body")
+            soup = BeautifulSoup(page.content(), "html.parser")
+            self.process_page(soup)
+            if soup.find("ul", {"class": "pagination-list"}).find(
+                "li", {"class": "pagination-item pagination-item--next"}
+            ):
+                url = (
+                    soup.find("ul", {"class": "pagination-list"})
+                    .find("li", {"class": "pagination-item pagination-item--next"})
+                    .find("a")
+                    .get("href")
+                )
+                if url:
+                    self.url = url
+                else:
+                    break
+            else:
+                break
 
     def process_page(self, soup):
         """

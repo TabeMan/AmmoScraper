@@ -1,8 +1,10 @@
+import time
 import logging
 import traceback
 from bs4 import BeautifulSoup
 
 from bot.base.base_scraper import BaseScraper
+from bot.base.get_manufacturer import get_manufacturer
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +34,16 @@ class TargetsportsScraper(BaseScraper):
         page = browser.new_page()
         page.goto(self.url, wait_until="networkidle")
         page.wait_for_selector("div.product-listing-sort")
+        # Click "In Stock Only" button if it's visible
+        in_stock_only_button_locator = page.locator("input#stockFilter")
+        if in_stock_only_button_locator.is_visible():
+            in_stock_only_button_locator.click()
+        # Click "All" button if it's visible
+        per_page_button_locator = page.locator("select.PageSizePicker")
+        if per_page_button_locator.is_visible():
+            per_page_button_locator.select_option(value="All")
+            time.sleep(1)
+
         soup = BeautifulSoup(page.content(), "html.parser")
         self.process_page(soup)
 
@@ -83,13 +95,14 @@ class TargetsportsScraper(BaseScraper):
             dict: A dictionary containing the extracted product info.
         """
         result = {}
-        out_of_stock = row.find("button", {"class": "add-to-cart"}).text.strip()
-        if out_of_stock == "Notify":
-            return
-
         result["title"] = row.find("h2").text.strip()
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
+        manufacturer = row.find("h2").find("strong").text.strip()
+        result["manufacturer"] = get_manufacturer(manufacturer)
+        if not result["manufacturer"]:
+            print(f"Could not find manufacturer for {manufacturer}")
+            return
         link = row.find("a").get("href")
         result["link"] = f"https://www.targetsportsusa.com{link}"
         result["image"] = row.find("img", {"class": "product-image"}).get("src")

@@ -4,6 +4,7 @@ import logging
 from bs4 import BeautifulSoup
 
 from bot.base.base_scraper import BaseScraper
+from bot.base.get_manufacturer import get_manufacturer
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +32,24 @@ class BuckinghorseoutpostScraper(BaseScraper):
         """
         browser = self.browser
         page = browser.new_page()
-        page.goto(self.url, wait_until="networkidle")
-        page.wait_for_selector("div.header-padding")
-        soup = BeautifulSoup(page.content(), "html.parser")
-        self.process_page(soup)
+        # Click "Next" button until it's no longer visible
+        while True:
+            page.goto(self.url, wait_until="networkidle")
+            page.wait_for_selector("div.header-padding")
+            soup = BeautifulSoup(page.content(), "html.parser")
+            self.process_page(soup)
+            if soup.find("ul", {"class": "pagination-list"}).find(
+                "li", {"class": "pagination-item pagination-item--next"}
+            ):
+                url = (
+                    soup.find("ul", {"class": "pagination-list"})
+                    .find("li", {"class": "pagination-item pagination-item--next"})
+                    .find("a")
+                    .get("href")
+                )
+                self.url = url
+            else:
+                break
 
     def process_page(self, soup):
         """
@@ -84,6 +99,10 @@ class BuckinghorseoutpostScraper(BaseScraper):
         result["title"] = row.find("h4", {"class": "card-title"}).text.strip()
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
+        manufacturer = row.find("h4", {"class": "card-text brand"}).text.strip()
+        result["manufacturer"] = get_manufacturer(manufacturer)
+        if not result["manufacturer"]:
+            return
         result["link"] = row.find("a").get("href")
         result["image"] = row.find("img").get("data-src")
         result["website"] = "Bucking Horse Outpost"
@@ -96,7 +115,7 @@ class BuckinghorseoutpostScraper(BaseScraper):
         )
         result["original_price"] = f"{original_price:.2f}"
 
-        match = re.search(r"(\d+)\s*(rd)", result["title"].lower())
+        match = re.search(r"(\d+)\s*(rd)", result["title"].lower().replace(",", ""))
         if match:
             rounds_per_case = int(match.group(1))
             cpr = original_price / rounds_per_case

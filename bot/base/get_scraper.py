@@ -77,6 +77,11 @@ from bot.scrapers.ammofast_scraper import AmmofastScraper
 from bot.scrapers.ammojoy_scraper import AmmojoyScraper
 from bot.scrapers.astrasports_scraper import AstrasportsScraper
 from bot.scrapers.ammunitionplanet_scraper import AmmunitionplanetScraper
+from bot.scrapers.bulldogguns_scraper import BulldoggunsScraper
+from bot.scrapers.conkeysfirearms_scraper import ConkeysfirearmsScraper
+from bot.scrapers.collectorrifleandammo_scraper import CollectorrifleandammoScraper
+from bot.scrapers.clarkarmory_scraper import ClarkarmoryScraper
+from bot.scrapers.ammosupplywarehouse_scraper import AmmosupplywarehouseScraper
 
 
 def get_scraper(website_name, url):

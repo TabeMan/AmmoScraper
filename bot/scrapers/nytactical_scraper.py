@@ -4,6 +4,7 @@ import logging
 from bs4 import BeautifulSoup
 
 from bot.base.base_scraper import BaseScraper
+from bot.base.get_manufacturer import get_manufacturer
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +33,17 @@ class NytacticalScraper(BaseScraper):
         browser = self.browser
         page = browser.new_page()
         page.goto(self.url, wait_until="networkidle")
-        page.wait_for_selector("div.banner")
-        soup = BeautifulSoup(page.content(), "html.parser")
-        self.process_page(soup)
+        page.wait_for_load_state("load")
+        # Click "Next" button until it's no longer visible
+        while True:
+            soup = BeautifulSoup(page.content(), "html.parser")
+            self.process_page(soup)
+            next_button_locator = page.locator('ul.pagination >> text="Next ›"')
+            if next_button_locator.is_visible():
+                next_button_locator.click()
+                page.wait_for_load_state("load")
+            else:
+                break
 
     def process_page(self, soup):
         """
@@ -84,28 +93,36 @@ class NytacticalScraper(BaseScraper):
         """
         result = {}
         result["title"] = row.find("div", {"class": "description"}).text.strip()
+        # Check if the title contains a round count
+        match = re.search(r"(\d+)\s*(rd|round|pk|-pk|-pack|/)", result["title"].lower())
+        if not match:
+            return
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
+        manufacturer = (
+            row.find("div", {"class": "grid-description"})
+            .find("span", {"class": "small"})
+            .text.strip()
+        )
+        result["manufacturer"] = get_manufacturer(manufacturer)
+        if not result["manufacturer"]:
+            return
         link = row.find("a").get("href")
         result["link"] = f"https://www.2nytactical.com{link}"
         result["image"] = row.find("img", {"class": "img-responsive"})["src"]
         result["website"] = "2NY Tactical"
-        prices = (
-            row.find("div", {"class": "price"}).text.replace("$", " ").lstrip().split()
-        )
-        if len(prices) == 1:
-            original_price = float(prices[0])
-            result["original_price"] = f"{original_price:.2f}"
-        elif len(prices) == 2:
-            original_price = float(prices[1])
-            result["original_price"] = f"{original_price:.2f}"
-        match = re.search(
-            r"(\d+)\s*(rd|round|rds|pk|-pk|-pack)", result["title"].lower()
-        )
-        if match:
-            rounds_per_case = int(match.group(1))
-            cpr = original_price / rounds_per_case
-            result["cpr"] = f"{cpr:.2f}"
-            self.results.append(result)
+
+        if row.find("div", {"class": "price"}).find("span", {"class": "text-success"}):
+            original_price = float(
+                row.find("div", {"class": "price"})
+                .find("span", {"class": "text-success"})
+                .text.strip("$")
+            )
         else:
-            return
+            original_price = float(row.find("div", {"class": "price"}).text.strip("$"))
+        result["original_price"] = f"{original_price:.2f}"
+
+        rounds_per_case = int(match.group(1))
+        cpr = original_price / rounds_per_case
+        result["cpr"] = f"{cpr:.2f}"
+        self.results.append(result)

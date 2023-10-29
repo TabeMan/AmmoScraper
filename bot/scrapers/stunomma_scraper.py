@@ -32,10 +32,26 @@ class StunommasportsScraper(BaseScraper):
         """
         browser = self.browser
         page = browser.new_page()
-        page.goto(self.url)
-        page.wait_for_selector("div#page-container")
-        soup = BeautifulSoup(page.content(), "html.parser")
-        self.process_page(soup)
+        # Click "Next" button until it's no longer visible
+        while True:
+            page.goto(self.url)
+            page.wait_for_selector("div#page-container")
+            soup = BeautifulSoup(page.content(), "html.parser")
+            self.process_page(soup)
+            if soup.find("ul", {"class": "page-numbers"}).find(
+                "a", {"class": "next page-numbers"}
+            ):
+                url = (
+                    soup.find("ul", {"class": "page-numbers"})
+                    .find("a", {"class": "next page-numbers"})
+                    .get("href")
+                )
+                if url:
+                    self.url = url
+                else:
+                    break
+            else:
+                break
 
     def process_page(self, soup):
         """

@@ -3,6 +3,7 @@ import traceback
 from bs4 import BeautifulSoup
 
 from bot.base.base_scraper import BaseScraper
+from bot.base.get_manufacturer import get_manufacturer
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +33,16 @@ class MiwallcorporationScraper(BaseScraper):
         page = browser.new_page()
         page.goto(self.url, wait_until="networkidle")
         page.wait_for_selector("ul.productGrid")
-        soup = BeautifulSoup(page.content(), "html.parser")
-        self.process_page(soup)
+        # Click "Next" button until it's no longer visible
+        while True:
+            soup = BeautifulSoup(page.content(), "html.parser")
+            self.process_page(soup)
+            next_button_locator = page.locator("li.pagination-item--next").nth(0)
+            if next_button_locator.is_visible():
+                next_button_locator.click()
+                page.wait_for_load_state("load")
+            else:
+                break
 
     def process_page(self, soup):
         """
@@ -84,6 +93,9 @@ class MiwallcorporationScraper(BaseScraper):
         )
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
+        result["manufacturer"] = get_manufacturer(result["title"])
+        if not result["manufacturer"]:
+            return
         result["link"] = row.find("a").get("href")
         result["image"] = row.find("img", {"class": "card-image"}).get("src")
         result["website"] = "Miwall Corporation"

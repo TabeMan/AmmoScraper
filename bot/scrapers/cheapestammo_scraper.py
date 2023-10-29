@@ -4,6 +4,7 @@ import logging
 from bs4 import BeautifulSoup
 
 from bot.base.base_scraper import BaseScraper
+from bot.base.get_manufacturer import get_manufacturer
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ class CheapestammoScraper(BaseScraper):
             traceback.print_exc()
             return
 
-        for row in inner:
+        for row in inner[:-1]:
             self.process_row(row)
 
     def process_row(self, row):
@@ -84,8 +85,11 @@ class CheapestammoScraper(BaseScraper):
         result["title"] = row.find("a", {"class": "product-title"}).text.strip()
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
+        result["manufacturer"] = get_manufacturer(result["title"])
+        if not result["manufacturer"]:
+            return
         result["link"] = row.find("a", {"class": "product-title"}).get("href")
-        result["image"] = row.find("img", {"class": "ty-pict cm-image"}).get("src")
+        result["image"] = row.find("img").get("data-src")
         result["website"] = "Cheapest Ammo"
         prices = row.find("div", {"class": "ut2-gl__price"}).find_all(
             "span", {"class": "ty-price-num"}

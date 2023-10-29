@@ -9,16 +9,16 @@ from bot.base.get_manufacturer import get_manufacturer
 logger = logging.getLogger(__name__)
 
 
-class TundramichiganScraper(BaseScraper):
+class CollectorrifleandammoScraper(BaseScraper):
     """
-    A scraper for the Tundra Michigan website.
+    A scraper for the Collector Rifle & Ammo website.
 
     Inherits from BaseScraper.
     """
 
     def __init__(self, url):
         """
-        Initializes the TundramichiganScraper with a URL.
+        Initializes the CollectorrifleandammoScraper with a URL.
 
         Args:
             url (str): The URL to be scraped.
@@ -33,25 +33,21 @@ class TundramichiganScraper(BaseScraper):
         browser = self.browser
         page = browser.new_page()
         page.goto(self.url, wait_until="networkidle")
-        page.wait_for_selector("div.grid.grid--uniform")
+        page.wait_for_selector("div.vol-container")
         soup = BeautifulSoup(page.content(), "html.parser")
         self.process_page(soup)
 
     def process_page(self, soup):
         """
         Processes the page content to extract product listings.
-        The tr tags are split into odd and even lists, so we need to
-        process them separately.
 
         Args:
             soup (BeautifulSoup object): The parsed HTML of the page.
         """
         try:
-            inner = soup.find("div", {"class": "grid grid--uniform"}).find_all(
+            inner = soup.find("div", {"class": "v-product-grid"}).find_all(
                 "div",
-                {
-                    "class": "product grid__item medium-up--one-third small--one-half slide-up-animation animated"
-                },
+                {"class": "v-product"},
             )
         except Exception as e:
             print(f"Unexpected error: {e} - {self.url} during process_page")
@@ -86,43 +82,32 @@ class TundramichiganScraper(BaseScraper):
             dict: A dictionary containing the extracted product info.
         """
         result = {}
-        result["title"] = row.find(
-            "div", {"class": "product__title product__title--card text-center"}
-        ).text.strip()
+        result["title"] = row.find("a", {"class": "v-product__title"}).text.strip()
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
         result["manufacturer"] = get_manufacturer(result["title"])
         if not result["manufacturer"]:
             return
-        link = row.find("a", {"class": "product__image-wrapper"}).get("href")
-        result["link"] = f"https://tundramichigan.com{link}"
-        images = row.find("img").get("data-src").replace("{width}", "360")
-        result["image"] = f"https:{images}"
-        result["website"] = "Tundra Michigan"
+        result["link"] = row.find("a").get("href")
+        image = row.find("img").get("src")
+        result["image"] = f"https:{image}"
+        result["website"] = "Collector Rifle & Ammo"
 
-        prices = row.find("div", {"class": "product__prices text-center"}).find_all(
-            "span"
+        original_price = float(
+            row.find("div", {"class": "product_productprice"})
+            .text.strip()
+            .split("$")[1]
         )
+        result["original_price"] = f"{original_price:.2f}"
 
-        if len(prices) in [2, 4]:
-            price_class = (
-                "product__price" if len(prices) == 2 else "product__price--on-sale"
-            )
-            price = (
-                row.find("div", {"class": "product__prices text-center"})
-                .find("span", {"class": price_class})
-                .text.split(" $")[1]
-                .strip()
-            )
-            original_price = float(price)
-            result["original_price"] = f"{original_price:.2f}"
-
-            match = re.search(r"(\d+)\s*(round|rd)", result["title"].lower())
-            if match:
-                rounds_per_case = int(match.group(1))
-                cpr = original_price / rounds_per_case
-                result["cpr"] = f"{cpr:.2f}"
-                self.results.append(result)
-
+        match = re.search(r"(\d+[\d,]*)\s*(round|rd)", result["title"], re.IGNORECASE)
+        if match:
+            rounds_per_case_str = match.group(1).replace(",", "")
+            rounds_per_case = int(rounds_per_case_str)
+            if rounds_per_case == 0:
+                return
+            cpr = original_price / rounds_per_case
+            result["cpr"] = f"{cpr:.2f}"
+            self.results.append(result)
         else:
             return

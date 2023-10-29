@@ -4,6 +4,7 @@ import logging
 from bs4 import BeautifulSoup
 
 from bot.base.base_scraper import BaseScraper
+from bot.base.get_manufacturer import get_manufacturer
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +33,19 @@ class SouthernmunitionsScraper(BaseScraper):
         browser = self.browser
         page = browser.new_page()
         page.goto(self.url, wait_until="networkidle")
-        page.wait_for_selector("div#main-content")
-        soup = BeautifulSoup(page.content(), "html.parser")
-        self.process_page(soup)
+        page.wait_for_load_state("load")
+        # Click "Next" button until it's no longer visible
+        while True:
+            soup = BeautifulSoup(page.content(), "html.parser")
+            self.process_page(soup)
+            next_button_locator = page.locator(
+                'ul.page-numbers >> a[class="next page-numbers"]'
+            )
+            if next_button_locator.is_visible():
+                next_button_locator.click()
+                page.wait_for_load_state("load")
+            else:
+                break
 
     def process_page(self, soup):
         """
@@ -88,6 +99,9 @@ class SouthernmunitionsScraper(BaseScraper):
         ).text.strip()
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
+        result["manufacturer"] = get_manufacturer(result["title"])
+        if not result["manufacturer"]:
+            return
         result["link"] = row.find("a").get("href")
         result["image"] = row.find("img").get("src")
         if "placeholder" in result["image"]:
@@ -105,7 +119,11 @@ class SouthernmunitionsScraper(BaseScraper):
             return
         result["original_price"] = f"{original_price:.2f}"
 
-        match = re.search(r"(\d+)\s*(round|rd)", result["title"].lower())
+        match = re.search(
+            r"(\d+[\d,]*)\s*(rd|round|rnd)",
+            result["title"].replace(",", ""),
+            re.IGNORECASE,
+        )
         if match:
             rounds_per_case = int(match.group(1))
             cpr = original_price / rounds_per_case

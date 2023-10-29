@@ -4,6 +4,7 @@ import logging
 from bs4 import BeautifulSoup
 
 from bot.base.base_scraper import BaseScraper
+from bot.base.get_manufacturer import get_manufacturer
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +89,9 @@ class TulammozoneScraper(BaseScraper):
         result["title"] = row.find("div", {"class": "product-card__name"}).text.strip()
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
+        result["manufacturer"] = get_manufacturer(result["title"])
+        if not result["manufacturer"]:
+            return
         link = row.find("a").get("href")
         result["link"] = f"https://tulammozone.com{link}"
         images = row.find("img").get("srcset")

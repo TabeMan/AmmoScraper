@@ -1,8 +1,10 @@
+import time
 import traceback
 import logging
 from bs4 import BeautifulSoup
 
 from bot.base.base_scraper import BaseScraper
+from bot.base.get_manufacturer import get_manufacturer
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +33,7 @@ class CabelasScraper(BaseScraper):
         browser = self.browser
         page = browser.new_page()
         page.goto(self.url)
-        page.wait_for_selector("div#page")
+        page.wait_for_selector("div.styles_ResultItem__DHSnb")
         soup = BeautifulSoup(page.content(), "html.parser")
         self.process_page(soup)
 
@@ -48,7 +50,7 @@ class CabelasScraper(BaseScraper):
                 .find("div", {"class": "styles_ResultsList__FA8dO"})
                 .find_all(
                     "div",
-                    {"class": "styles_ResultItem__DHSnb"},
+                    {"class": "styles_ResultItem__DHSnb undefined"},
                 )
             )
         except Exception as e:
@@ -87,17 +89,18 @@ class CabelasScraper(BaseScraper):
         result["title"] = row.find("a").get("title")
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
+        result["manufacturer"] = get_manufacturer(result["title"])
+        if not result["manufacturer"]:
+            return
         link = row.find("a").get("href")
         result["link"] = f"https://www.cabelas.com{link}"
-        result["image"] = (
-            row.find("div", {"class": "styles_ResultItemThumbnail__QKxlc undefined"})
-            .find("img")
-            .get("src")
-        )
+        result["image"] = row.find("img").get("src")
         if result["image"] is None:
             return
         result["website"] = "Cabela's"
-
+        two_price_box = row.find("div", {"class": "styles_PriceContainer__TySzg"}).text
+        if "-" in two_price_box:
+            return
         price_box = row.find("div", {"class": "styles_ResultItemPrice__vsgH5"})
         original_price_span_length = price_box.find(
             "div", {"class": "styles_PriceContainer__TySzg"}

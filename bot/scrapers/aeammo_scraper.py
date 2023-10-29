@@ -4,6 +4,7 @@ import logging
 from bs4 import BeautifulSoup
 
 from bot.base.base_scraper import BaseScraper
+from bot.base.get_manufacturer import get_manufacturer
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +34,16 @@ class AeammoScraper(BaseScraper):
         page = browser.new_page()
         page.goto(self.url, wait_until="networkidle")
         page.wait_for_selector("div.item-container")
-        soup = BeautifulSoup(page.content(), "html.parser")
-        self.process_page(soup)
+        # Click "Next" button until it's no longer visible
+        while True:
+            soup = BeautifulSoup(page.content(), "html.parser")
+            self.process_page(soup)
+            next_button_locator = page.locator('ul.pagination >> text="Next ›"')
+            if next_button_locator.is_visible():
+                next_button_locator.click()
+                page.wait_for_load_state("load")
+            else:
+                break
 
     def process_page(self, soup):
         """
@@ -85,6 +94,14 @@ class AeammoScraper(BaseScraper):
         result["title"] = row.find("div", {"class": "description"}).text.strip()
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
+        manufacturer = (
+            row.find("div", {"class": "grid-description"})
+            .find("span", {"class": "small"})
+            .text.strip()
+        )
+        result["manufacturer"] = get_manufacturer(manufacturer)
+        if not result["manufacturer"]:
+            return
         link = row.find("a").get("href")
         result["link"] = f"https://www.aeammo.com{link}"
         result["image"] = row.find("img", {"class": "img-responsive"}).get("src")
@@ -99,15 +116,9 @@ class AeammoScraper(BaseScraper):
             original_price = float(price_text.text.strip("$"))
         result["original_price"] = f"{original_price:.2f}"
 
-        rounds_match = re.search(r"(\d+)\s*(round|rounds)", result["title"].lower())
-        box_match = re.search(r"(\d+)\s*(/box)", result["title"].lower())
-        if rounds_match:
-            rounds_per_case = int(rounds_match.group(1))
-            cpr = original_price / rounds_per_case
-            result["cpr"] = f"{cpr:.2f}"
-            self.results.append(result)
-        elif box_match:
-            rounds_per_case = int(box_match.group(1))
+        match = re.search(r"(\d+)\s*(round|/)", result["title"].lower())
+        if match:
+            rounds_per_case = int(match.group(1))
             cpr = original_price / rounds_per_case
             result["cpr"] = f"{cpr:.2f}"
             self.results.append(result)

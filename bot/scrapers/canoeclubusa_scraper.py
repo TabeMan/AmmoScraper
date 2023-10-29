@@ -4,6 +4,7 @@ import logging
 from bs4 import BeautifulSoup
 
 from bot.base.base_scraper import BaseScraper
+from bot.base.get_manufacturer import get_manufacturer
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +84,10 @@ class CanoeclubusaScraper(BaseScraper):
         result["title"] = row.find("h4", {"class": "card-title"}).text.strip()
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
+        manufacturer = row.find("p", {"class": "card-text brand-name"}).text.strip()
+        result["manufacturer"] = get_manufacturer(manufacturer)
+        if not result["manufacturer"]:
+            return
         result["link"] = row.find("a").get("href")
         result["image"] = row.find("img").get("data-src")
         # Skip if image is default

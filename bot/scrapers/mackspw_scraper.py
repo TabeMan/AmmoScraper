@@ -3,6 +3,7 @@ import traceback
 from bs4 import BeautifulSoup
 
 from bot.base.base_scraper import BaseScraper
+from bot.base.get_manufacturer import get_manufacturer
 
 logger = logging.getLogger(__name__)
 
@@ -104,11 +105,13 @@ class MackspwScraper(BaseScraper):
         ).text.strip()
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
+        result["manufacturer"] = get_manufacturer(result["title"])
+        if not result["manufacturer"]:
+            return
         link = row.find("a", {"class": "facets-item-cell-grid-title"}).get("href")
         result["link"] = f"https://www.mackspw.com{link}"
-        result["image"] = row.find("img", {"class": "facets-item-cell-grid-image"}).get(
-            "src"
-        )
+        img = row.find("img", {"class": "facets-item-cell-grid-image"}).get("src")
+        result["image"] = "".join(img).replace(" ", "%20")
         result["website"] = "Mack's Prairie Wings"
         original_price = float(
             row.find("span", {"class": "product-views-price-lead"}).text.strip(" $")

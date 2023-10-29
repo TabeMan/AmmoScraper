@@ -32,10 +32,27 @@ class SportsmansfinestScraper(BaseScraper):
         """
         browser = self.browser
         page = browser.new_page()
-        page.goto(self.url)
-        page.wait_for_selector("main.main-content")
-        soup = BeautifulSoup(page.content(), "html.parser")
-        self.process_page(soup)
+        # Click "Next" button until it's no longer visible
+        while True:
+            page.goto(self.url)
+            page.wait_for_selector("main.main-content")
+            soup = BeautifulSoup(page.content(), "html.parser")
+            self.process_page(soup)
+            if soup.find("ul", {"class": "pagination-list"}).find(
+                "li", {"class": "pagination-next"}
+            ):
+                url = (
+                    soup.find("ul", {"class": "pagination-list"})
+                    .find("li", {"class": "pagination-next"})
+                    .find("a")
+                    .get("href")
+                )
+                if url:
+                    self.url = url
+                else:
+                    break
+            else:
+                break
 
     def process_page(self, soup):
         """
@@ -85,27 +102,6 @@ class SportsmansfinestScraper(BaseScraper):
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
         result["manufacturer"] = get_manufacturer(result["title"])
-        if result["manufacturer"] is None:
-            if "arms" in result["title"].lower():
-                result["manufacturer"] = "Armscor"
-            elif "brna" in result["title"].lower():
-                result["manufacturer"] = "Browning"
-            elif "win" in result["title"].lower():
-                result["manufacturer"] = "Winchester"
-            elif "fio" in result["title"].lower():
-                result["manufacturer"] = "Fiocchi"
-            elif "rem" in result["title"].lower():
-                result["manufacturer"] = "Remington"
-            elif "fed" in result["title"].lower():
-                result["manufacturer"] = "Federal"
-            elif "fsm" in result["title"].lower():
-                result["manufacturer"] = "Fort Scott"
-            elif "cia" in result["title"].lower():
-                result["manufacturer"] = "Red Army Standard"
-            elif "dtap" in result["title"].lower():
-                result["manufacturer"] = "Doubletap Ammunition"
-            elif "g2r" in result["title"].lower():
-                result["manufacturer"] = "G2 Research"
         if not result["manufacturer"]:
             return
         result["image"] = row.find("img").get("src")

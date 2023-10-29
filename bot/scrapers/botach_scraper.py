@@ -106,6 +106,8 @@ class BotachScraper(BaseScraper):
             return
         result["link"] = row.find("a").get("href")
         result["image"] = row.find("img").get("src")
+        if "place-holder" in result["image"]:
+            return
         result["website"] = "Botach"
 
         if row.find("div", {"class": "kuSalePrice kuSpecialPrice"}):

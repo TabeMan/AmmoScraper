@@ -85,6 +85,7 @@ class MeadammoScraper(BaseScraper):
             return
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
+        result["manufacturer"] = "Mead Ammo"
         result["link"] = row.find("a").get("href")
         result["image"] = row.find("img").get("src")
         result["website"] = "Mead Ammo"

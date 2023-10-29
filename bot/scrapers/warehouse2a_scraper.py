@@ -99,7 +99,7 @@ class Warehouse2aScraper(BaseScraper):
         result["original_price"] = f"{original_price:.2f}"
 
         match = re.search(
-            r"(\d+)\s*(rounds|rds|rd|round)", result["title"].lower().replace(",", "")
+            r"(\d+[\d,]*)\s*(rd|round)", result["title"].replace(",", ""), re.IGNORECASE
         )
         if match:
             rounds_per_case = int(match.group(1))

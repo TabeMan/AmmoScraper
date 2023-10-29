@@ -4,6 +4,7 @@ import logging
 from bs4 import BeautifulSoup
 
 from bot.base.base_scraper import BaseScraper
+from bot.base.get_manufacturer import get_manufacturer
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +32,17 @@ class GunbuyerScraper(BaseScraper):
         """
         browser = self.browser
         page = browser.new_page()
-        page.goto(self.url, wait_until="networkidle")
-        page.wait_for_selector("div.page-wrapper")
-        soup = BeautifulSoup(page.content(), "html.parser")
-        self.process_page(soup)
+        # Click "Next" button until it's no longer visible
+        while True:
+            page.goto(self.url, wait_until="networkidle")
+            page.wait_for_selector("div.page-wrapper")
+            soup = BeautifulSoup(page.content(), "html.parser")
+            self.process_page(soup)
+            if soup.find("a", {"class": "action next"}):
+                url = soup.find("a", {"class": "action next"}).get("href")
+                self.url = url
+            else:
+                break
 
     def process_page(self, soup):
         """
@@ -93,6 +101,9 @@ class GunbuyerScraper(BaseScraper):
         result["title"] = row.find("a", {"class": "product-item-link"}).text.strip()
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
+        result["manufacturer"] = get_manufacturer(result["title"])
+        if not result["manufacturer"]:
+            return
         result["link"] = row.find("a", {"class": "product-item-link"}).get("href")
         result["image"] = row.find("img").get("data-original")
         result["website"] = "Gun Buyer"
@@ -104,7 +115,7 @@ class GunbuyerScraper(BaseScraper):
         )
         result["original_price"] = f"{original_price:.2f}"
 
-        match = re.search(r"(\d+)\s*(round|rd)", result["title"].lower())
+        match = re.search(r"(\d+)\s*(round|rd|/)", result["title"].lower())
         if match:
             rounds_per_case = int(match.group(1))
             cpr = original_price / rounds_per_case

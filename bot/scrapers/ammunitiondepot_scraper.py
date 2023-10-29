@@ -1,8 +1,10 @@
+import time
 import logging
 import traceback
 from bs4 import BeautifulSoup
 
 from bot.base.base_scraper import BaseScraper
+from bot.base.get_manufacturer import get_manufacturer
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +33,17 @@ class AmmunitiondepotScraper(BaseScraper):
         browser = self.browser
         page = browser.new_page()
         page.goto(self.url, wait_until="networkidle")
-        page.wait_for_selector("div.ss-targeted")
-        soup = BeautifulSoup(page.content(), "html.parser")
-        self.process_page(soup)
+        page.wait_for_selector("div.page-wrapper")
+        # Click "Next" button until it's no longer visible
+        while True:
+            soup = BeautifulSoup(page.content(), "html.parser")
+            self.process_page(soup)
+            next_button_locator = page.locator("a.next").nth(1)
+            if next_button_locator.is_visible():
+                next_button_locator.click()
+                time.sleep(1)
+            else:
+                break
 
     def process_page(self, soup):
         """
@@ -82,28 +92,35 @@ class AmmunitiondepotScraper(BaseScraper):
         ).text.strip()
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
+        result["manufacturer"] = get_manufacturer(result["title"])
+        if not result["manufacturer"]:
+            return
         link = row.find("a", {"class": "product-item-link ng-binding"}).get("href")
         result["link"] = f"https:{link}"
         image = row.find("img", {"class": "product-image-photo"})["src"]
         result["image"] = f"https:{image}"
         result["website"] = "Ammunition Depot"
-        price_tag = row.find("span", {"class": "ng-binding ss-sale-price"})
-        if price_tag is None:
-            price_tag = row.find("span", {"class": "price ng-scope"}).find(
-                "span", {"class": "ng-binding"}
+
+        if row.find("span", {"class": "ng-binding ss-sale-price"}):
+            original_price = float(
+                row.find("span", {"class": "price ng-scope"})
+                .find("span", {"class": "ng-binding ss-sale-price"})
+                .text.strip("$")
             )
-
-        if price_tag is not None:
-            original_price = float(price_tag.text.strip("$"))
         else:
-            print("Price not found")
-            return
-
+            original_price = float(
+                row.find("span", {"class": "price ng-scope"})
+                .find("span", {"class": "ng-binding"})
+                .text.strip("$")
+            )
         result["original_price"] = f"{original_price:.2f}"
-        cpr = float(
-            row.find("span", {"class": "rounds-price ng-scope"})
-            .find("span", {"class": "ng-binding"})
-            .text.strip("$")
-        )
-        result["cpr"] = f"{cpr:.2f}"
-        self.results.append(result)
+        if row.find("span", {"class": "rounds-price ng-scope"}):
+            cpr = float(
+                row.find("span", {"class": "rounds-price ng-scope"})
+                .find("span", {"class": "ng-binding"})
+                .text.strip("$")
+            )
+            result["cpr"] = f"{cpr:.2f}"
+            self.results.append(result)
+        else:
+            return
