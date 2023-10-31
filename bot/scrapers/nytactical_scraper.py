@@ -32,8 +32,13 @@ class NytacticalScraper(BaseScraper):
         """
         browser = self.browser
         page = browser.new_page()
-        page.goto(self.url, wait_until="networkidle")
-        page.wait_for_load_state("load")
+        try:
+            page.goto(self.url, wait_until="networkidle")
+            page.wait_for_load_state("load")
+        except Exception as e:
+            print(f"Unexpected error: {e} - {self.url} during scrape")
+            traceback.print_exc()
+            return
         # Click "Next" button until it's no longer visible
         while True:
             soup = BeautifulSoup(page.content(), "html.parser")

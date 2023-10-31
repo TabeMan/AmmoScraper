@@ -32,18 +32,24 @@ class SouthernmunitionsScraper(BaseScraper):
         """
         browser = self.browser
         page = browser.new_page()
-        page.goto(self.url, wait_until="networkidle")
-        page.wait_for_load_state("load")
         # Click "Next" button until it's no longer visible
         while True:
+            page.goto(self.url)
+            page.wait_for_selector("ul.page-numbers")
             soup = BeautifulSoup(page.content(), "html.parser")
             self.process_page(soup)
-            next_button_locator = page.locator(
-                'ul.page-numbers >> a[class="next page-numbers"]'
-            )
-            if next_button_locator.is_visible():
-                next_button_locator.click()
-                page.wait_for_load_state("load")
+            if soup.find("ul", {"class": "page-numbers"}).find(
+                "a", {"class": "next page-numbers"}
+            ):
+                url = (
+                    soup.find("ul", {"class": "page-numbers"})
+                    .find("a", {"class": "next page-numbers"})
+                    .get("href")
+                )
+                if url:
+                    self.url = f"https://southernmunitions.com{url}"
+                else:
+                    break
             else:
                 break
 

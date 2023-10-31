@@ -4,7 +4,7 @@ from decouple import config
 from bot.base.get_scraper import get_scraper
 from bot.base.base_scraper import ScraperBot
 
-from bot.scrapers.ammosupplywarehouse_scraper import AmmosupplywarehouseScraper
+from bot.scrapers.greentop_scraper import GreentopScraper
 
 
 CALIBERS = [
@@ -27,8 +27,8 @@ def run_scraper_for_caliber(caliber):
 
     :param caliber: The caliber for which to scrape ammo deals.
     """
-    scraper = AmmosupplywarehouseScraper(
-        "https://www.ammosupplywarehouse.com/index.php?main_page=index&cPath=1_51"
+    scraper = GreentopScraper(
+        "https://www.greentophuntfish.com/shooting/ammunition/shop/9mm/?stock=1"
     )
     bot = ScraperBot(scrapers=[scraper])
     # Converting the caliber name to the format used in the environment variable keys
@@ -38,15 +38,16 @@ def run_scraper_for_caliber(caliber):
     # # Parsing the URLs from the environment variable
     # urls_list = config(url_key, "").split(",")
     # urls_dict = dict(item.split(";") for item in urls_list)
-
     # # Initializing the scraper objects
     # scrapers = []
     # for website, url in urls_dict.items():
-    #     scrapers.append(get_scraper(website, url))
-
+    #     try:
+    #         scrapers.append(get_scraper(website, url))
+    #     except Exception as e:
+    #         print(f"Unexpected error: {e} - {url} during get_scraper")
     # # Initializing the ScraperBot with the scraper objects
     # bot = ScraperBot(scrapers=scrapers)
-    # Running the scrapers and printing the scraped data
+    # # Running the scrapers and printing the scraped data
     data = bot.run()
     pprint.pprint(data)
     print(f"Found {len(data)} deals for {caliber}")

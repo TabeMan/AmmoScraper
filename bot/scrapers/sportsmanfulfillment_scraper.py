@@ -90,9 +90,7 @@ class SportsmanfulfillmentScraper(BaseScraper):
             return
         link = row.find("a").get("href")
         result["link"] = f"https://www.sportsmanfulfillment.com{link}"
-        result["image"] = row.find(
-            "img", {"class": "card-image lazyautosizes lazyloaded"}
-        ).get("src")
+        result["image"] = row.find("img", {"class": "card-image"}).get("src")
         result["website"] = "Sportsman Fulfillment"
 
         if row.find("span", {"class": "price price--withoutTax price--sale-price"}):

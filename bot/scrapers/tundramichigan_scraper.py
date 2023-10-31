@@ -96,7 +96,7 @@ class TundramichiganScraper(BaseScraper):
             return
         link = row.find("a", {"class": "product__image-wrapper"}).get("href")
         result["link"] = f"https://tundramichigan.com{link}"
-        images = row.find("img").get("data-src").replace("{width}", "360")
+        images = row.find("img").get("srcset").split(" ")[0].replace("180x", "360x")
         result["image"] = f"https:{images}"
         result["website"] = "Tundra Michigan"
 

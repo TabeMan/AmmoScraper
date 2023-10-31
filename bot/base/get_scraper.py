@@ -60,7 +60,6 @@ from bot.scrapers.kirammo_scraper import KirammoScraper
 from bot.scrapers.midsouthshooters_scraper import MidsouthshootersScraper
 from bot.scrapers.sportsmanfulfillment_scraper import SportsmanfulfillmentScraper
 from bot.scrapers.gunrunusa_scraper import GunrunusaScraper
-from bot.scrapers.gordyandsons_scraper import GordyandsonsScraper
 from bot.scrapers.sportsmansfinest_scraper import SportsmansfinestScraper
 from bot.scrapers.stunomma_scraper import StunommasportsScraper
 from bot.scrapers.gunnersoutlet_scraper import GunnersoutletScraper
@@ -82,6 +81,9 @@ from bot.scrapers.conkeysfirearms_scraper import ConkeysfirearmsScraper
 from bot.scrapers.collectorrifleandammo_scraper import CollectorrifleandammoScraper
 from bot.scrapers.clarkarmory_scraper import ClarkarmoryScraper
 from bot.scrapers.ammosupplywarehouse_scraper import AmmosupplywarehouseScraper
+
+# Won't load items. Gives no results.
+# from bot.scrapers.gordyandsons_scraper import GordyandsonsScraper
 
 
 def get_scraper(website_name, url):

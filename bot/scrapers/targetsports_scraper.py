@@ -101,7 +101,6 @@ class TargetsportsScraper(BaseScraper):
         manufacturer = row.find("h2").find("strong").text.strip()
         result["manufacturer"] = get_manufacturer(manufacturer)
         if not result["manufacturer"]:
-            print(f"Could not find manufacturer for {manufacturer}")
             return
         link = row.find("a").get("href")
         result["link"] = f"https://www.targetsportsusa.com{link}"

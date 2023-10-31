@@ -34,7 +34,7 @@ class GordyandsonsScraper(BaseScraper):
         browser = self.browser
         page = browser.new_page()
         page.goto(self.url)
-        page.wait_for_selector("div.page")
+        page.wait_for_selector("div.hawk")
         soup = BeautifulSoup(page.content(), "html.parser")
         self.process_page(soup)
 
@@ -46,9 +46,8 @@ class GordyandsonsScraper(BaseScraper):
             soup (BeautifulSoup object): The parsed HTML of the page.
         """
         try:
-            inner = soup.find(
-                "div", {"class": "hawk-results__listing mutated"}
-            ).find_all("div", {"class": "hawk-results__item"})
+            inner = soup.find("div", {"class": "hawk__body"})
+            print(inner)
         except Exception as e:
             print(f"Unexpected error: {e} - {self.url} during process_page")
             traceback.print_exc()

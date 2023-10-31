@@ -32,16 +32,25 @@ class AmmunitiondepotScraper(BaseScraper):
         """
         browser = self.browser
         page = browser.new_page()
-        page.goto(self.url, wait_until="networkidle")
-        page.wait_for_selector("div.page-wrapper")
         # Click "Next" button until it's no longer visible
         while True:
+            page.goto(self.url, wait_until="networkidle")
+            page.wait_for_selector("div.page-wrapper")
             soup = BeautifulSoup(page.content(), "html.parser")
             self.process_page(soup)
-            next_button_locator = page.locator("a.next").nth(1)
-            if next_button_locator.is_visible():
-                next_button_locator.click()
-                time.sleep(1)
+            if soup.find("ul", {"class": "items pages-items"}).find(
+                "li", {"class": "item pages-item-next ng-scope"}
+            ):
+                url = (
+                    soup.find("ul", {"class": "items pages-items"})
+                    .find("li", {"class": "item pages-item-next ng-scope"})
+                    .find("a")
+                    .get("href")
+                )
+                if url:
+                    self.url = url
+                else:
+                    break
             else:
                 break
 

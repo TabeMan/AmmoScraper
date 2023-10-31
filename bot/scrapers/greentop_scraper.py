@@ -107,11 +107,13 @@ class GreentopScraper(BaseScraper):
             dict: A dictionary containing the extracted product info.
         """
         result = {}
-        result["title"] = (
-            row.find("div", {"class": "product details product-item-details"})
-            .find("a", {"class": "product-item-link primary-info"})
-            .text.strip()
-        )
+        # Some listings don't have a title, so skip them
+        try:
+            result["title"] = row.find("img", {"class": "product-image-photo"}).get(
+                "alt"
+            )
+        except AttributeError:
+            return
         result["steel_casing"] = "steel" in result["title"].lower()
         result["remanufactured"] = "reman" in result["title"].lower()
         result["manufacturer"] = get_manufacturer(result["title"])
@@ -132,7 +134,7 @@ class GreentopScraper(BaseScraper):
         result["original_price"] = f"{original_price:.2f}"
 
         match = re.search(
-            r"(\d+)\s*(rd|bx|/box|per|round)", result["title"], re.IGNORECASE
+            r"(\d+)\s*(rd|bx|/box|per|round|-box)", result["title"], re.IGNORECASE
         )
         if match:
             rounds_per_case = int(match.group(1))

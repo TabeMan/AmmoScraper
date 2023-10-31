@@ -98,13 +98,21 @@ class AstrasportsScraper(BaseScraper):
         result["image"] = row.find("img").get("src")
         result["website"] = "Astra Sports"
 
-        original_price = float(
-            row.find("span", {"class": "price"})
-            .find("ins")
-            .find("span", {"class": "woocommerce-Price-amount amount"})
-            .text.strip()
-            .strip("$")
-        )
+        if row.find("span", {"class": "price"}).find("ins"):
+            original_price = float(
+                row.find("span", {"class": "price"})
+                .find("ins")
+                .find("span", {"class": "woocommerce-Price-amount amount"})
+                .text.strip()
+                .strip("$")
+            )
+        else:
+            original_price = float(
+                row.find("span", {"class": "price"})
+                .find("span", {"class": "woocommerce-Price-amount amount"})
+                .text.strip()
+                .strip("$")
+            )
         result["original_price"] = f"{original_price:.2f}"
 
         match = re.search(r"(\d+[\d,]*)\s*(round)", result["title"], re.IGNORECASE)

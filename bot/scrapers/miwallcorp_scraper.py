@@ -31,16 +31,25 @@ class MiwallcorporationScraper(BaseScraper):
         """
         browser = self.browser
         page = browser.new_page()
-        page.goto(self.url, wait_until="networkidle")
-        page.wait_for_selector("ul.productGrid")
         # Click "Next" button until it's no longer visible
         while True:
+            page.goto(self.url, wait_until="networkidle")
+            page.wait_for_selector("ul.productGrid")
             soup = BeautifulSoup(page.content(), "html.parser")
             self.process_page(soup)
-            next_button_locator = page.locator("li.pagination-item--next").nth(0)
-            if next_button_locator.is_visible():
-                next_button_locator.click()
-                page.wait_for_load_state("load")
+            if soup.find("ul", {"class": "pagination-list"}).find(
+                "li", {"class": "pagination-item pagination-item--next"}
+            ):
+                url = (
+                    soup.find("ul", {"class": "pagination-list"})
+                    .find("li", {"class": "pagination-item pagination-item--next"})
+                    .find("a")
+                    .get("href")
+                )
+                if url:
+                    self.url = url
+                else:
+                    break
             else:
                 break
 

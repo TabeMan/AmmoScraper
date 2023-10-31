@@ -34,20 +34,9 @@ class PalmettoScraper(BaseScraper):
         browser = self.browser
         page = browser.new_page()
         page.goto(self.url, wait_until="networkidle")
-        # Click "Next" button until it's no longer visible
-        while True:
-            page.wait_for_selector("ol.products")
-            soup = BeautifulSoup(page.content(), "html.parser")
-            self.process_page(soup)
-            try:
-                next_button_locator = page.locator("a.next").nth(2)
-                if next_button_locator.is_visible():
-                    next_button_locator.click()
-                else:
-                    break
-            except Exception as e:
-                print(f"An error occurred: {e}")
-                break
+        page.wait_for_selector("ol.products")
+        soup = BeautifulSoup(page.content(), "html.parser")
+        self.process_page(soup)
 
     def process_page(self, soup):
         """
