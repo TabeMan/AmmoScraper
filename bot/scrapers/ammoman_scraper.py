@@ -31,7 +31,12 @@ class AmmomanScraper(BaseScraper):
         """
         browser = self.browser
         page = browser.new_page()
-        page.goto(self.url, wait_until="networkidle")
+        try:
+            page.goto(self.url)
+        except Exception as e:
+            print(f"Unexpected error: {e} - {self.url} during page.goto")
+            traceback.print_exc()
+            return
         page.wait_for_selector("header.header")
         soup = BeautifulSoup(page.content(), "html.parser")
         self.process_page(soup)

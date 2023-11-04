@@ -4,17 +4,15 @@ from decouple import config
 from bot.base.get_scraper import get_scraper
 from bot.base.base_scraper import ScraperBot
 
-from bot.scrapers.greentop_scraper import GreentopScraper
-
 
 CALIBERS = [
     "9mm Luger",
-    # "5.56x45 NATO",
-    # "22 LR",
-    # "380 Auto",
-    # "45 ACP",
-    # "38 Special",
-    # "7.62x39mm",
+    "5.56x45 NATO",
+    "22 LR",
+    "380 Auto",
+    "45 ACP",
+    "38 Special",
+    "7.62x39mm",
 ]
 
 
@@ -27,27 +25,28 @@ def run_scraper_for_caliber(caliber):
 
     :param caliber: The caliber for which to scrape ammo deals.
     """
-    scraper = GreentopScraper(
-        "https://www.greentophuntfish.com/shooting/ammunition/shop/9mm/?stock=1"
-    )
-    bot = ScraperBot(scrapers=[scraper])
+    # scraper = SportsmanfulfillmentScraper(
+    #     "https://www.sportsmanfulfillment.com/shooting/ammo/rifle-ammo/#/filter:custom_caliber:7.62x39mm"
+    # )
+    # bot = ScraperBot(scrapers=[scraper])
     # Converting the caliber name to the format used in the environment variable keys
-    # config_caliber_name = caliber.upper().replace(" ", "_").replace(".", "")
-    # url_key = f"MM_{config_caliber_name}_URLS"
+    config_caliber_name = caliber.upper().replace(" ", "_").replace(".", "")
+    url_key = f"MM_{config_caliber_name}_URLS"
 
-    # # Parsing the URLs from the environment variable
-    # urls_list = config(url_key, "").split(",")
-    # urls_dict = dict(item.split(";") for item in urls_list)
-    # # Initializing the scraper objects
-    # scrapers = []
-    # for website, url in urls_dict.items():
-    #     try:
-    #         scrapers.append(get_scraper(website, url))
-    #     except Exception as e:
-    #         print(f"Unexpected error: {e} - {url} during get_scraper")
-    # # Initializing the ScraperBot with the scraper objects
-    # bot = ScraperBot(scrapers=scrapers)
-    # # Running the scrapers and printing the scraped data
+    # Parsing the URLs from the environment variable
+    urls_list = config(url_key, "").split(",")
+    urls_dict = dict(item.split(";") for item in urls_list)
+    # Initializing the scraper objects
+    scrapers = []
+    for website, url in urls_dict.items():
+        scraper = get_scraper(website, url)
+        if scraper:
+            scrapers.append(scraper)
+        else:
+            print(f"No scraper found for {website} - {url}")
+    # Initializing the ScraperBot with the scraper objects
+    bot = ScraperBot(scrapers=scrapers)
+    # Running the scrapers and printing the scraped data
     data = bot.run()
     pprint.pprint(data)
     print(f"Found {len(data)} deals for {caliber}")

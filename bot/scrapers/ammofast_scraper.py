@@ -34,13 +34,17 @@ class AmmofastScraper(BaseScraper):
         page = browser.new_page()
         # Click "Next" button until it's no longer visible
         while True:
-            page.goto(self.url, wait_until="networkidle")
-            page.wait_for_selector("div#page")
+            try:
+                page.goto(self.url)
+                page.wait_for_selector("div#page", timeout=10000)
+            except Exception as e:
+                print(f"Unexpected error: {e} - {self.url} during page.goto")
+                traceback.print_exc()
+                return
             soup = BeautifulSoup(page.content(), "html.parser")
             self.process_page(soup)
-            if soup.find("ul", {"class": "page-numbers"}).find(
-                "a", {"class": "next page-numbers"}
-            ):
+            pagination = page.query_selector("a.next.page-numbers")
+            if pagination:
                 url = (
                     soup.find("ul", {"class": "page-numbers"})
                     .find("a", {"class": "next page-numbers"})
@@ -112,7 +116,7 @@ class AmmofastScraper(BaseScraper):
         result["website"] = "Ammo Fast"
 
         if row.find("span", {"class": "price"}).find("ins"):
-            original_price = float(
+            original_price = (
                 row.find("span", {"class": "price"})
                 .find("ins")
                 .find("span", {"class": "woocommerce-Price-amount"})
@@ -120,12 +124,13 @@ class AmmofastScraper(BaseScraper):
                 .strip("$")
             )
         else:
-            original_price = float(
+            original_price = (
                 row.find("span", {"class": "price"})
                 .find("span", {"class": "woocommerce-Price-amount"})
                 .text.strip()
                 .strip("$")
             )
+        original_price = float(original_price)
         result["original_price"] = f"{original_price:.2f}"
 
         match = re.search(

@@ -32,18 +32,15 @@ class AeammoScraper(BaseScraper):
         """
         browser = self.browser
         page = browser.new_page()
-        page.goto(self.url, wait_until="networkidle")
+        try:
+            page.goto(self.url)
+        except Exception as e:
+            print(f"Unexpected error: {e} - {self.url} during page.goto")
+            traceback.print_exc()
+            return
         page.wait_for_selector("div.item-container")
-        # Click "Next" button until it's no longer visible
-        while True:
-            soup = BeautifulSoup(page.content(), "html.parser")
-            self.process_page(soup)
-            next_button_locator = page.locator('ul.pagination >> text="Next ›"')
-            if next_button_locator.is_visible():
-                next_button_locator.click()
-                page.wait_for_load_state("load")
-            else:
-                break
+        soup = BeautifulSoup(page.content(), "html.parser")
+        self.process_page(soup)
 
     def process_page(self, soup):
         """

@@ -32,15 +32,18 @@ class AmmunitiondepotScraper(BaseScraper):
         """
         browser = self.browser
         page = browser.new_page()
-        # Click "Next" button until it's no longer visible
         while True:
-            page.goto(self.url, wait_until="networkidle")
-            page.wait_for_selector("div.page-wrapper")
+            try:
+                page.goto(self.url, wait_until="networkidle")
+                page.wait_for_selector("ol.ss-item-container", timeout=10000)
+            except Exception as e:
+                print(f"Unexpected error: {e} - {self.url} during page.goto")
+                traceback.print_exc()
+                return
             soup = BeautifulSoup(page.content(), "html.parser")
             self.process_page(soup)
-            if soup.find("ul", {"class": "items pages-items"}).find(
-                "li", {"class": "item pages-item-next ng-scope"}
-            ):
+            pagination = page.query_selector("li.item.pages-item-next")
+            if pagination:
                 url = (
                     soup.find("ul", {"class": "items pages-items"})
                     .find("li", {"class": "item pages-item-next ng-scope"})
@@ -115,12 +118,14 @@ class AmmunitiondepotScraper(BaseScraper):
                 row.find("span", {"class": "price ng-scope"})
                 .find("span", {"class": "ng-binding ss-sale-price"})
                 .text.strip("$")
+                .replace(",", "")
             )
         else:
             original_price = float(
                 row.find("span", {"class": "price ng-scope"})
                 .find("span", {"class": "ng-binding"})
                 .text.strip("$")
+                .replace(",", "")
             )
         result["original_price"] = f"{original_price:.2f}"
         if row.find("span", {"class": "rounds-price ng-scope"}):

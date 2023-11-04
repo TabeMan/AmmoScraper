@@ -34,13 +34,17 @@ class StunommasportsScraper(BaseScraper):
         page = browser.new_page()
         # Click "Next" button until it's no longer visible
         while True:
-            page.goto(self.url)
+            try:
+                page.goto(self.url)
+            except Exception as e:
+                print(f"Unexpected error: {e} - {self.url} during page.goto")
+                traceback.print_exc()
+                return
             page.wait_for_selector("div#page-container")
             soup = BeautifulSoup(page.content(), "html.parser")
             self.process_page(soup)
-            if soup.find("ul", {"class": "page-numbers"}).find(
-                "a", {"class": "next page-numbers"}
-            ):
+            pagination = page.query_selector("a.next.page-numbers")
+            if pagination:
                 url = (
                     soup.find("ul", {"class": "page-numbers"})
                     .find("a", {"class": "next page-numbers"})

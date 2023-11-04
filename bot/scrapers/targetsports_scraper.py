@@ -32,7 +32,12 @@ class TargetsportsScraper(BaseScraper):
         """
         browser = self.browser
         page = browser.new_page()
-        page.goto(self.url, wait_until="networkidle")
+        try:
+            page.goto(self.url)
+        except Exception as e:
+            print(f"Unexpected error: {e} - {self.url} during page.goto")
+            traceback.print_exc()
+            return
         page.wait_for_selector("div.product-listing-sort")
         # Click "In Stock Only" button if it's visible
         in_stock_only_button_locator = page.locator("input#stockFilter")
@@ -42,7 +47,7 @@ class TargetsportsScraper(BaseScraper):
         per_page_button_locator = page.locator("select.PageSizePicker")
         if per_page_button_locator.is_visible():
             per_page_button_locator.select_option(value="All")
-            time.sleep(1)
+            time.sleep(2)
 
         soup = BeautifulSoup(page.content(), "html.parser")
         self.process_page(soup)

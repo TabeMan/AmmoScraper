@@ -34,13 +34,17 @@ class AlamoammoScraper(BaseScraper):
         page = browser.new_page()
         # Click "Next" button until it's no longer visible
         while True:
-            page.goto(self.url, wait_until="networkidle")
-            page.wait_for_selector("div#mainWrapper")
+            try:
+                page.goto(self.url)
+                page.wait_for_selector("div#mainWrapper", timeout=10000)
+            except Exception as e:
+                print(f"Unexpected error: {e} - {self.url} during page.goto")
+                traceback.print_exc()
+                return
             soup = BeautifulSoup(page.content(), "html.parser")
             self.process_page(soup)
-            if soup.find("div", {"id": "productsListingListingBottomLinks"}).find(
-                "a", {"title": " Next Page "}
-            ):
+            pagination = page.query_selector("a[title=' Next Page ']")
+            if pagination:
                 url = (
                     soup.find("div", {"id": "productsListingListingBottomLinks"})
                     .find("a", {"title": " Next Page "})

@@ -33,13 +33,17 @@ class MiwallcorporationScraper(BaseScraper):
         page = browser.new_page()
         # Click "Next" button until it's no longer visible
         while True:
-            page.goto(self.url, wait_until="networkidle")
+            try:
+                page.goto(self.url)
+            except Exception as e:
+                print(f"Unexpected error: {e} - {self.url} during page.goto")
+                traceback.print_exc()
+                return
             page.wait_for_selector("ul.productGrid")
             soup = BeautifulSoup(page.content(), "html.parser")
             self.process_page(soup)
-            if soup.find("ul", {"class": "pagination-list"}).find(
-                "li", {"class": "pagination-item pagination-item--next"}
-            ):
+            pagination = page.query_selector("li.pagination-item--next")
+            if pagination:
                 url = (
                     soup.find("ul", {"class": "pagination-list"})
                     .find("li", {"class": "pagination-item pagination-item--next"})

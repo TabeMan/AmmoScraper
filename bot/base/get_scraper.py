@@ -3,7 +3,6 @@ from bot.scrapers.sportsmansoutdoorsuperstore_scraper import (
 )
 from bot.scrapers.palmetto_scraper import PalmettoScraper
 from bot.scrapers.targetsports_scraper import TargetsportsScraper
-from bot.scrapers.ammunitiondepot_scraper import AmmunitiondepotScraper
 from bot.scrapers.luckygunner_scraper import LuckygunnerScraper
 from bot.scrapers.warehouse2a_scraper import Warehouse2aScraper
 from bot.scrapers.nytactical_scraper import NytacticalScraper
@@ -44,7 +43,6 @@ from bot.scrapers.huntshootfish_scraper import HuntshootfishScraper
 from bot.scrapers.blackoutclub300_scraper import Blackoutclub300Scraper
 from bot.scrapers.floridagunexchange_scraper import FloridagunexchangeScraper
 from bot.scrapers.americanmarksman_scraper import AmericanmarksmanScraper
-from bot.scrapers.ammo2_scraper import Ammo2Scraper
 from bot.scrapers.buckinghorseoutpost_scraper import BuckinghorseoutpostScraper
 from bot.scrapers.caliberarmory_scraper import CaliberarmoryScraper
 from bot.scrapers.venturamunitions_scraper import VenturamunitionsScraper
@@ -81,6 +79,8 @@ from bot.scrapers.conkeysfirearms_scraper import ConkeysfirearmsScraper
 from bot.scrapers.collectorrifleandammo_scraper import CollectorrifleandammoScraper
 from bot.scrapers.clarkarmory_scraper import ClarkarmoryScraper
 from bot.scrapers.ammosupplywarehouse_scraper import AmmosupplywarehouseScraper
+from bot.scrapers.ammo2_scraper import Ammo2Scraper
+from bot.scrapers.ammunitiondepot_scraper import AmmunitiondepotScraper
 
 # Won't load items. Gives no results.
 # from bot.scrapers.gordyandsons_scraper import GordyandsonsScraper
@@ -95,7 +95,9 @@ def get_scraper(website_name, url):
     :return: An instance of the appropriate scraper class.
     :raises ValueError: If no scraper class is found for the given website name.
     """
-    scraper_class = globals().get(f"{website_name.capitalize()}Scraper")
-    if scraper_class is None:
-        raise ValueError(f"No scraper found for website: {website_name}")
-    return scraper_class(url)
+    try:
+        scraper_class = globals().get(f"{website_name.capitalize()}Scraper")
+        return scraper_class(url)
+    except Exception as e:
+        print(f"Unexpected error: {e} - {url} during get_scraper")
+        return None

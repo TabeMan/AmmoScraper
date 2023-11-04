@@ -32,8 +32,13 @@ class CabelasScraper(BaseScraper):
         """
         browser = self.browser
         page = browser.new_page()
-        page.goto(self.url)
-        page.wait_for_selector("div.styles_ResultItem__DHSnb")
+        try:
+            page.goto(self.url)
+            page.wait_for_selector("div.styles_ResultItem__DHSnb", timeout=10000)
+        except Exception as e:
+            print(f"Unexpected error: {e} - {self.url} during page.goto")
+            traceback.print_exc()
+            return
         soup = BeautifulSoup(page.content(), "html.parser")
         self.process_page(soup)
 
@@ -121,9 +126,11 @@ class CabelasScraper(BaseScraper):
             return
         result["original_price"] = f"{original_price:.2f}"
 
-        cpr = row.find(
-            "div", {"class": "styles_PricePerRoundContainer__GNmAp"}
-        ).text.split(" /")[0]
+        cpr = (
+            row.find("div", {"class": "styles_PricePerRoundContainer__GNmAp"})
+            .text.split("/")[0]
+            .strip()
+        )
         if "\u00A2" in cpr:
             cpr = int(cpr.strip("\u00A2"))
             if cpr < 10:

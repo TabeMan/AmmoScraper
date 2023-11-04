@@ -32,8 +32,13 @@ class VenturamunitionsScraper(BaseScraper):
         """
         browser = self.browser
         page = browser.new_page()
-        page.goto(self.url, wait_until="networkidle")
-        page.wait_for_selector("div.main")
+        try:
+            page.goto(self.url)
+        except Exception as e:
+            print(f"Unexpected error: {e} - {self.url} during page.goto")
+            traceback.print_exc()
+            return
+        page.wait_for_selector("ul.ProductList")
         soup = BeautifulSoup(page.content(), "html.parser")
         self.process_page(soup)
 
@@ -91,7 +96,14 @@ class VenturamunitionsScraper(BaseScraper):
         result["image"] = row.find("img").get("src")
         result["website"] = "Ventura Munitions"
 
-        original_price = float(row.find("em", {"class": "p-price"}).text.strip("$"))
+        if row.find("em", {"class": "p-price"}).find("span", {"class": "SalePrice"}):
+            original_price = float(
+                row.find("em", {"class": "p-price"})
+                .find("span", {"class": "SalePrice"})
+                .text.strip("$")
+            )
+        else:
+            original_price = float(row.find("em", {"class": "p-price"}).text.strip("$"))
         result["original_price"] = f"{original_price:.2f}"
 
         match = re.search(r"(\d+)\s*(round)", result["title"].lower())

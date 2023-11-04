@@ -33,10 +33,9 @@ class NytacticalScraper(BaseScraper):
         browser = self.browser
         page = browser.new_page()
         try:
-            page.goto(self.url, wait_until="networkidle")
-            page.wait_for_load_state("load")
+            page.goto(self.url)
         except Exception as e:
-            print(f"Unexpected error: {e} - {self.url} during scrape")
+            print(f"Unexpected error: {e} - {self.url} during page.goto")
             traceback.print_exc()
             return
         # Click "Next" button until it's no longer visible
